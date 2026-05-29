@@ -14,10 +14,9 @@ In Rancher UI → Apps → rancher-monitoring → Edit → paste into YAML:
             - sourceLabels: [__name__]
               regex: "node_filesystem.*|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
               action: keep
-      additionalScrapeConfigsSecret:
+      additionalScrapeConfigs:
         name: {{ .Release.Name }}-scrape-configs
         key: additional-scrape-configs.yaml
-        namespace: {{ .Values.namespace }}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REQUIRED — Pre-create the SMTP secret

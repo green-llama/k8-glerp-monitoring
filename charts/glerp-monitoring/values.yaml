@@ -14,6 +14,11 @@ cluster:
 # helm uninstall (preserves VictoriaMetrics PVC data).
 namespace: glerp-monitoring
 
+# ── Prometheus namespace ───────────────────────────────────────────────────────
+# Namespace where Rancher Monitoring's Prometheus runs. The additionalScrapeConfigs
+# Secret must live here — Prometheus Operator cannot read secrets cross-namespace.
+prometheusNamespace: cattle-monitoring-system
+
 # ── Prometheus Operator selector labels ───────────────────────────────────────
 # Rancher Monitoring's Prometheus picks up PrometheusRule and ServiceMonitor
 # objects carrying BOTH these labels.
