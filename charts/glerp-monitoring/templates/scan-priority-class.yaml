@@ -1,0 +1,10 @@
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.scanPriorityClassName }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+value: -100
+globalDefault: false
+description: "Background security scan jobs — preempted first under node pressure"

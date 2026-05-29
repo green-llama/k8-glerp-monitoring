@@ -1,0 +1,82 @@
+# Alert rules for GLerp site uptime.
+# Three alert types:
+#   GLerpSiteDown        — complete outage, ISP is healthy (2m, critical)
+#   GLerpSiteDegraded    — site responds but login page is broken (5m, warning)
+#   GLerpSiteDownISP     — complete outage, ISP appears down (2m, warning)
+#
+# AlertManager inhibition (defined in alertmanager-config.yaml) suppresses
+# GLerpSiteDown and GLerpSiteDegraded when ISPConnectivityLost is active.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: glerp-uptime-alerts
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: glerp-monitoring
+    release: rancher-monitoring
+spec:
+  groups:
+    - name: glerp.uptime
+      rules:
+        # ── Complete outage — ISP healthy ──────────────────────────────────────
+        - alert: GLerpSiteDown
+          expr: |
+            probe_success{job=~"glerp-.*-basic"} == 0
+            and on()
+            (avg(probe_success{job="internet-connectivity"}) >= 0.5)
+          for: 2m
+          labels:
+            severity: critical
+            alert_type: application
+            team: ops
+          annotations:
+            summary: "GLerp site DOWN: {{ $labels.site }}"
+            description: >
+              The GLerp site {{ $labels.site }} ({{ $labels.instance }}) has not
+              responded to HTTP probes for 2 minutes. ISP connectivity is healthy,
+              so this is an application-level failure.
+              Check pod status: kubectl get pods -n {{ $labels.site }}
+            runbook_url: "https://github.com/green-llama/k8-glerp-monitoring/blob/main/docs/runbooks/site-down.md"
+
+        # ── Degraded — site responds but login page is malformed ───────────────
+        - alert: GLerpSiteDegraded
+          expr: |
+            probe_success{job=~"glerp-.*-basic"} == 1
+            and on(site) group_left()
+            (probe_success{job=~"glerp-.*-login"} == 0)
+            and on()
+            (avg(probe_success{job="internet-connectivity"}) >= 0.5)
+          for: 5m
+          labels:
+            severity: warning
+            alert_type: application_degraded
+            team: ops
+          annotations:
+            summary: "GLerp site DEGRADED: {{ $labels.site }}"
+            description: >
+              The GLerp site {{ $labels.site }} ({{ $labels.instance }}) is accepting
+              HTTP connections (Nginx is up) but the login page content check is failing —
+              the rendered HTML is missing expected Frappe markers. This typically means
+              the backend Frappe/gunicorn workers are down or overloaded.
+              Check worker logs: kubectl logs -n {{ $labels.site }} -l app.kubernetes.io/name=glerp --tail=50
+            runbook_url: "https://github.com/green-llama/k8-glerp-monitoring/blob/main/docs/runbooks/site-degraded.md"
+
+        # ── Complete outage — ISP may be down (ambiguous) ──────────────────────
+        - alert: GLerpSiteDownISPSuspected
+          expr: |
+            probe_success{job=~"glerp-.*-basic"} == 0
+            and on()
+            (avg(probe_success{job="internet-connectivity"}) < 0.5)
+          for: 2m
+          labels:
+            severity: warning
+            alert_type: isp_suspected
+            team: ops
+          annotations:
+            summary: "GLerp site DOWN (ISP outage suspected): {{ $labels.site }}"
+            description: >
+              The GLerp site {{ $labels.site }} is not responding AND the majority of
+              internet connectivity probes are also failing. This is most likely an ISP
+              outage rather than an application failure. Check ISPConnectivityLost alert
+              for confirmation.

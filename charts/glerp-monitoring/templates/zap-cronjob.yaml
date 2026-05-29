@@ -1,0 +1,146 @@
+{{- if .Values.zapScan.enabled }}
+{{- range .Values.scanTargets }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "glerp-monitoring.fullname" $ }}-zap-{{ .name | lower | replace "_" "-" }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: zap-scan
+    glerp-sec-audit/scan-target: {{ .name | quote }}
+  annotations:
+    glerp-sec-audit/target-url: {{ .url | quote }}
+spec:
+  schedule: {{ $.Values.zapScan.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "glerp-monitoring.selectorLabels" $ | nindent 12 }}
+            app.kubernetes.io/component: zap-scan
+            glerp-sec-audit/scan-target: {{ .name | quote }}
+        spec:
+          restartPolicy: Never
+          priorityClassName: {{ $.Values.scanPriorityClassName }}
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+
+          containers:
+            - name: zap-scan
+              image: {{ $.Values.zapScan.image | quote }}
+              imagePullPolicy: {{ $.Values.zapScan.imagePullPolicy }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  TARGET_NAME="{{ .name }}"
+                  REPORT_DIR="/zap/wrk/${TARGET_NAME}"
+                  JSON_FILE="${REPORT_DIR}/zap-${TS}.json"
+                  PUSHGW="{{ include "glerp-monitoring.pushgatewayUrl" $ }}"
+
+                  echo "=== ZAP scan: ${TARGET_NAME} ${TS} ==="
+
+                  echo "--- Step 1: Run ZAP scan ---"
+                  mkdir -p "${REPORT_DIR}"
+                  {{- if eq $.Values.zapScan.scanType "full" }}
+                  zap-full-scan.py \
+                    -t {{ .url | quote }} \
+                    -r "${TARGET_NAME}/zap-${TS}.html" \
+                    -J "${TARGET_NAME}/zap-${TS}.json" \
+                    -I -m 60 || true
+                  {{- else }}
+                  zap-baseline.py \
+                    -t {{ .url | quote }} \
+                    -r "${TARGET_NAME}/zap-${TS}.html" \
+                    -J "${TARGET_NAME}/zap-${TS}.json" \
+                    -I || true
+                  {{- end }}
+                  echo "Reports in ${REPORT_DIR}:"
+                  ls -lh "${REPORT_DIR}/" 2>/dev/null || echo "  (directory empty or not found)"
+
+                  echo "--- Step 2: Parse JSON and push to Pushgateway ---"
+                  if [ -f "${JSON_FILE}" ]; then
+                    export ZAP_JSON_PATH="${JSON_FILE}"
+                    python3 << 'PYEOF' > /tmp/zap-metrics.txt
+                  import json, os, time, sys
+                  risk_map = {"3": "High", "2": "Medium", "1": "Low", "0": "Informational"}
+                  types     = {v: 0 for v in risk_map.values()}
+                  instances = {v: 0 for v in risk_map.values()}
+                  try:
+                      with open(os.environ["ZAP_JSON_PATH"]) as f:
+                          data = json.load(f)
+                      for site in data.get("site", []):
+                          for alert in site.get("alerts", []):
+                              risk = risk_map.get(alert.get("riskcode", "-1"), "Unknown")
+                              if risk in types:
+                                  types[risk] += 1
+                                  instances[risk] += int(alert.get("count", "0") or "0")
+                  except Exception as e:
+                      print("# parse error: %s" % e, file=sys.stderr)
+                  print("# TYPE zap_alerts_total gauge")
+                  print("# HELP zap_alerts_total Distinct ZAP alert types by risk level")
+                  for r in ("High", "Medium", "Low", "Informational"):
+                      print('zap_alerts_total{risk="%s"} %d' % (r, types[r]))
+                  print("# TYPE zap_alert_instances_total gauge")
+                  print("# HELP zap_alert_instances_total Total ZAP alert instances across all scanned URLs")
+                  for r in ("High", "Medium", "Low", "Informational"):
+                      print('zap_alert_instances_total{risk="%s"} %d' % (r, instances[r]))
+                  print("# TYPE zap_scan_timestamp_seconds gauge")
+                  print("# HELP zap_scan_timestamp_seconds Unix timestamp of last completed ZAP scan")
+                  print("zap_scan_timestamp_seconds %d" % int(time.time()))
+                  PYEOF
+
+                    echo "Metrics to push:"
+                    cat /tmp/zap-metrics.txt
+
+                    wget -q --tries=3 -O /dev/null \
+                      --post-file=/tmp/zap-metrics.txt \
+                      "${PUSHGW}/metrics/job/zap/target/${TARGET_NAME}" \
+                      && echo "Pushed to ${PUSHGW}/metrics/job/zap/target/${TARGET_NAME}" \
+                      || echo "WARNING: Pushgateway push failed — scan results not in Grafana"
+
+                    echo "--- Step 3: Verify Pushgateway received metrics ---"
+                    wget -qO- "${PUSHGW}/metrics" 2>/dev/null \
+                      | grep "^zap_" \
+                      || echo "WARNING: zap_ metrics not visible in Pushgateway response"
+                  else
+                    echo "WARNING: JSON not found at ${JSON_FILE} — metrics not pushed"
+                  fi
+
+                  echo "=== ZAP scan complete: ${TARGET_NAME} ==="
+
+              env:
+                - name: ZAP_TARGET
+                  value: {{ .url | quote }}
+                - name: ZAP_SCAN_TYPE
+                  value: {{ $.Values.zapScan.scanType | quote }}
+              resources:
+                {{- toYaml $.Values.zapScan.resources | nindent 16 }}
+              volumeMounts:
+                # ZAP requires report files be written inside /zap/wrk
+                - name: reports
+                  mountPath: /zap/wrk
+
+          volumes:
+            - name: reports
+              persistentVolumeClaim:
+                claimName: {{ include "glerp-monitoring.fullname" $ }}-reports
+{{- end }}
+{{- end }}

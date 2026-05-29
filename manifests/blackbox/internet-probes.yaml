@@ -1,0 +1,38 @@
+# Internet connectivity Probe CRDs.
+# Deployed in cattle-monitoring-system (the monitoring namespace itself).
+# These probes are the reference signal for ISP health:
+#   - If a majority fail → ISP is down (ISPConnectivityLost alert fires)
+#   - Site-specific alerts are inhibited during ISP outages
+#
+# Three distinct external targets are used so a single CDN block does not
+# trigger a false positive ISP alert.
+#
+# The Blackbox Exporter service must be deployed before applying this manifest.
+# Apply with: kubectl apply -f manifests/blackbox/internet-probes.yaml
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: internet-connectivity
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: glerp-monitoring
+    probe-type: internet
+spec:
+  jobName: internet-connectivity
+  interval: 60s
+  scrapeTimeout: 15s
+  prober:
+    url: glerp-blackbox-prometheus-blackbox-exporter.cattle-monitoring-system.svc.cluster.local:9115
+    scheme: http
+    path: /probe
+  module: http_internet
+  targets:
+    staticConfig:
+      static:
+        - https://www.google.com
+        - https://www.cloudflare.com
+        - https://dns.quad9.net
+      labels:
+        probe_type: internet

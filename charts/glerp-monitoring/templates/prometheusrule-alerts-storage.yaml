@@ -1,0 +1,217 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-storage-alerts
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  groups:
+    - name: glerp.storage
+      rules:
+
+        # ── Longhorn node storage ──────────────────────────────────────────────
+
+        - alert: LonghornNodeStorageHigh
+          expr: |
+            glerp:longhorn_node_usage_ratio * 100
+            > {{ .Values.alerts.longhornNodeWarningPct }}
+          for: 15m
+          labels:
+            severity: warning
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              Longhorn node {{ "{{" }} $labels.node {{ "}}" }} storage above
+              {{ .Values.alerts.longhornNodeWarningPct }}%
+            description: >-
+              Node {{ "{{" }} $labels.node {{ "}}" }} on cluster {{ .Values.cluster.name }}
+              is using {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of Longhorn capacity
+              (threshold: {{ .Values.alerts.longhornNodeWarningPct }}%).
+
+        - alert: LonghornNodeStorageCritical
+          expr: |
+            glerp:longhorn_node_usage_ratio * 100
+            > {{ .Values.alerts.longhornNodeCriticalPct }}
+          for: 5m
+          labels:
+            severity: critical
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              CRITICAL: Longhorn node {{ "{{" }} $labels.node {{ "}}" }} storage above
+              {{ .Values.alerts.longhornNodeCriticalPct }}%
+            description: >-
+              Node {{ "{{" }} $labels.node {{ "}}" }} on cluster {{ .Values.cluster.name }}
+              is using {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of Longhorn capacity
+              (threshold: {{ .Values.alerts.longhornNodeCriticalPct }}%).
+
+        # ── Customer Longhorn allotment ────────────────────────────────────────
+        # Compares actual Longhorn usage per namespace against provisioned PVC
+        # capacity. label_replace aligns the claimnamespace label from usage
+        # metrics with the namespace label from provisioned metrics.
+
+        - alert: CustomerLonghornAllotmentHigh
+          expr: |
+            (
+              glerp:longhorn_namespace_usage_bytes
+              / on(claimnamespace) group_left()
+              label_replace(
+                sum by (namespace) (glerp:longhorn_namespace_provisioned_bytes),
+                "claimnamespace", "$1", "namespace", "(.+)"
+              )
+            ) * 100 > {{ .Values.alerts.customerLonghornWarningPct }}
+          for: 30m
+          labels:
+            severity: warning
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              Namespace {{ "{{" }} $labels.claimnamespace {{ "}}" }} Longhorn usage
+              above {{ .Values.alerts.customerLonghornWarningPct }}%
+            description: >-
+              Namespace {{ "{{" }} $labels.claimnamespace {{ "}}" }} is using
+              {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of its provisioned
+              Longhorn storage (threshold: {{ .Values.alerts.customerLonghornWarningPct }}%).
+
+        - alert: CustomerLonghornAllotmentExceeded
+          expr: |
+            (
+              glerp:longhorn_namespace_usage_bytes
+              / on(claimnamespace) group_left()
+              label_replace(
+                sum by (namespace) (glerp:longhorn_namespace_provisioned_bytes),
+                "claimnamespace", "$1", "namespace", "(.+)"
+              )
+            ) * 100 > {{ .Values.alerts.customerLonghornCriticalPct }}
+          for: 15m
+          labels:
+            severity: critical
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              CRITICAL: Namespace {{ "{{" }} $labels.claimnamespace {{ "}}" }} has
+              exceeded its Longhorn allotment
+            description: >-
+              Namespace {{ "{{" }} $labels.claimnamespace {{ "}}" }} is using
+              {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of its provisioned
+              Longhorn storage (threshold: {{ .Values.alerts.customerLonghornCriticalPct }}%).
+
+        # ── Customer MinIO usage ───────────────────────────────────────────────
+
+        - alert: CustomerMinIOUsageHigh
+          expr: |
+            (
+              minio_cluster_usage_total_bytes
+              / minio_cluster_capacity_usable_total_bytes
+            ) * 100 > {{ .Values.alerts.minioUsageWarningPct }}
+          for: 30m
+          labels:
+            severity: warning
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              MinIO tenant in {{ "{{" }} $labels.namespace {{ "}}" }} above
+              {{ .Values.alerts.minioUsageWarningPct }}% capacity
+            description: >-
+              MinIO tenant in namespace {{ "{{" }} $labels.namespace {{ "}}" }}
+              is using {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of usable capacity
+              (threshold: {{ .Values.alerts.minioUsageWarningPct }}%).
+
+        - alert: CustomerMinIOUsageCritical
+          expr: |
+            (
+              minio_cluster_usage_total_bytes
+              / minio_cluster_capacity_usable_total_bytes
+            ) * 100 > {{ .Values.alerts.minioUsageCriticalPct }}
+          for: 15m
+          labels:
+            severity: critical
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              CRITICAL: MinIO tenant in {{ "{{" }} $labels.namespace {{ "}}" }} above
+              {{ .Values.alerts.minioUsageCriticalPct }}% capacity
+            description: >-
+              MinIO tenant in namespace {{ "{{" }} $labels.namespace {{ "}}" }}
+              is using {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of usable capacity
+              (threshold: {{ .Values.alerts.minioUsageCriticalPct }}%).
+
+        # ── DirectPV drive space ───────────────────────────────────────────────
+
+        - alert: DirectPVDriveSpaceWarning
+          expr: |
+            (
+              directpv_stats_bytes_used
+              / directpv_stats_bytes_total
+            ) * 100 > {{ .Values.alerts.directpvDriveWarningPct }}
+          for: 15m
+          labels:
+            severity: warning
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              DirectPV drive {{ "{{" }} $labels.drive {{ "}}" }} on
+              {{ "{{" }} $labels.node {{ "}}" }} above {{ .Values.alerts.directpvDriveWarningPct }}%
+            description: >-
+              DirectPV drive {{ "{{" }} $labels.drive {{ "}}" }} on node
+              {{ "{{" }} $labels.node {{ "}}" }} is using
+              {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of capacity
+              (threshold: {{ .Values.alerts.directpvDriveWarningPct }}%).
+
+        # ── Node filesystem space ──────────────────────────────────────────────
+        # Excludes tmpfs and devtmpfs — only real mounted filesystems.
+
+        - alert: NodeFilesystemSpaceWarning
+          expr: |
+            (
+              1 - (
+                node_filesystem_avail_bytes{fstype!~"tmpfs|devtmpfs"}
+                / node_filesystem_size_bytes{fstype!~"tmpfs|devtmpfs"}
+              )
+            ) * 100 > {{ .Values.alerts.nodeFilesystemWarningPct }}
+          for: 15m
+          labels:
+            severity: warning
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              Filesystem {{ "{{" }} $labels.mountpoint {{ "}}" }} on
+              {{ "{{" }} $labels.instance {{ "}}" }} above {{ .Values.alerts.nodeFilesystemWarningPct }}%
+            description: >-
+              Filesystem {{ "{{" }} $labels.mountpoint {{ "}}" }} on
+              {{ "{{" }} $labels.instance {{ "}}" }} is using
+              {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of capacity
+              (threshold: {{ .Values.alerts.nodeFilesystemWarningPct }}%).
+
+        - alert: NodeFilesystemSpaceCritical
+          expr: |
+            (
+              1 - (
+                node_filesystem_avail_bytes{fstype!~"tmpfs|devtmpfs"}
+                / node_filesystem_size_bytes{fstype!~"tmpfs|devtmpfs"}
+              )
+            ) * 100 > {{ .Values.alerts.nodeFilesystemCriticalPct }}
+          for: 5m
+          labels:
+            severity: critical
+            alert_type: storage
+            cluster: {{ .Values.cluster.name | quote }}
+          annotations:
+            summary: >-
+              CRITICAL: Filesystem {{ "{{" }} $labels.mountpoint {{ "}}" }} on
+              {{ "{{" }} $labels.instance {{ "}}" }} above {{ .Values.alerts.nodeFilesystemCriticalPct }}%
+            description: >-
+              Filesystem {{ "{{" }} $labels.mountpoint {{ "}}" }} on
+              {{ "{{" }} $labels.instance {{ "}}" }} is using
+              {{ "{{" }} $value | printf "%.1f" {{ "}}" }}% of capacity
+              (threshold: {{ .Values.alerts.nodeFilesystemCriticalPct }}%).

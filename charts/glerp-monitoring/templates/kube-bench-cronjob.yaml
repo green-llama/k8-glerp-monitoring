@@ -1,0 +1,189 @@
+{{- if .Values.kubeBench.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "glerp-monitoring.fullname" . }}-kube-bench
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kube-bench
+spec:
+  schedule: {{ .Values.kubeBench.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "glerp-monitoring.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: kube-bench
+        spec:
+          serviceAccountName: {{ include "glerp-monitoring.serviceAccountName" . }}
+          restartPolicy: Never
+          priorityClassName: {{ .Values.scanPriorityClassName }}
+          hostPID: true
+          hostNetwork: false
+          securityContext:
+            seLinuxOptions:
+              type: "spc_t"
+
+          # kube-bench MUST run on a control-plane node — that is where the API server,
+          # etcd, scheduler, and controller-manager configs live. Running on a worker node
+          # causes every control-plane check (~50 of ~70 checks) to fail immediately because
+          # the config files and processes are absent, producing a falsely low score (~14%).
+          # The existing tolerations (operator: Exists) already permit scheduling on
+          # control-plane nodes regardless of their taints.
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: Exists
+
+          tolerations:
+            - operator: Exists
+
+          containers:
+            - name: kube-bench
+              image: {{ .Values.kubeBench.image | quote }}
+              imagePullPolicy: {{ .Values.kubeBench.imagePullPolicy }}
+
+              securityContext:
+                privileged: true
+                runAsUser: 0
+
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  mkdir -p /tmp/kube-bench
+                  echo "=== kube-bench run: ${TS} benchmark={{ .Values.kubeBench.benchmark }} ==="
+
+                  echo "--- Step 1: Text report (auditor-readable) ---"
+                  TXT_FILE="/tmp/kube-bench/kube-bench-${TS}.txt"
+                  kube-bench run --benchmark {{ .Values.kubeBench.benchmark }} \
+                    > "${TXT_FILE}" 2>&1
+                  TEXT_LINES=$(wc -l < "${TXT_FILE}" 2>/dev/null || echo 0)
+                  echo "Text report: ${TEXT_LINES} lines written"
+
+                  echo "--- Step 2: JSON report (metrics parsing) ---"
+                  JSON_FILE="/tmp/kube-bench/kube-bench-${TS}.json"
+                  kube-bench run \
+                    --benchmark {{ .Values.kubeBench.benchmark }} \
+                    --json \
+                    --outputfile "${JSON_FILE}"
+                  echo "JSON size: $(wc -c < ${JSON_FILE} 2>/dev/null || echo 0) bytes"
+
+                  echo "--- Step 3: Parse metrics ---"
+                  PASS=$(grep -o '"total_pass":[0-9]*' "${JSON_FILE}" | awk -F: '{s+=$2} END{print s+0}')
+                  FAIL=$(grep -o '"total_fail":[0-9]*' "${JSON_FILE}" | awk -F: '{s+=$2} END{print s+0}')
+                  WARN=$(grep -o '"total_warn":[0-9]*' "${JSON_FILE}" | awk -F: '{s+=$2} END{print s+0}')
+                  echo "Parsed: PASS=${PASS} FAIL=${FAIL} WARN=${WARN}"
+
+                  echo "--- Step 4: Push to Pushgateway ---"
+                  PUSHGW="{{ include "glerp-monitoring.pushgatewayUrl" . }}"
+                  METRICS_FILE="/tmp/kube-bench-metrics.txt"
+                  printf '# TYPE kube_bench_total_pass gauge\nkube_bench_total_pass %d\n# TYPE kube_bench_total_fail gauge\nkube_bench_total_fail %d\n# TYPE kube_bench_total_warn gauge\nkube_bench_total_warn %d\n' \
+                    "${PASS}" "${FAIL}" "${WARN}" > "${METRICS_FILE}"
+                  wget -q --tries=3 -O /dev/null \
+                    --post-file="${METRICS_FILE}" \
+                    "${PUSHGW}/metrics/job/kube-bench/instance/rke2-node"
+                  echo "Pushed to: ${PUSHGW}/metrics/job/kube-bench/instance/rke2-node"
+
+                  echo "--- Step 5: Verify Pushgateway received metrics ---"
+                  wget -qO- "${PUSHGW}/metrics" 2>/dev/null \
+                    | grep "^kube_bench" \
+                    || echo "WARNING: kube_bench metrics not found in Pushgateway response"
+
+                  echo "--- Step 6: Upload reports to file server ---"
+                  # Reports PVC cannot be mounted on control-plane nodes (Longhorn CSI not present).
+                  # Upload via filebrowser internal API instead — no node-level storage dependency.
+                  FB_URL="http://{{ include "glerp-monitoring.fullname" . }}-report-server.{{ .Release.Namespace }}.svc.cluster.local"
+                  FB_TOKEN=$(wget -qO- --post-data='' "${FB_URL}/api/login" 2>/dev/null | tr -d '"')
+                  if [ -n "${FB_TOKEN}" ]; then
+                    wget -q --tries=1 -O /dev/null \
+                      --post-data='' --header="X-Auth: ${FB_TOKEN}" \
+                      "${FB_URL}/api/resources/kube-bench/?override=true" 2>/dev/null || true
+                    wget -q --tries=2 -O /dev/null \
+                      --post-file="${TXT_FILE}" \
+                      --header="X-Auth: ${FB_TOKEN}" \
+                      --header="Content-Type: application/octet-stream" \
+                      "${FB_URL}/api/resources/kube-bench/kube-bench-${TS}.txt?override=true" \
+                      && echo "Uploaded: kube-bench-${TS}.txt" \
+                      || echo "WARNING: text report upload failed"
+                    wget -q --tries=2 -O /dev/null \
+                      --post-file="${JSON_FILE}" \
+                      --header="X-Auth: ${FB_TOKEN}" \
+                      --header="Content-Type: application/octet-stream" \
+                      "${FB_URL}/api/resources/kube-bench/kube-bench-${TS}.json?override=true" \
+                      && echo "Uploaded: kube-bench-${TS}.json" \
+                      || echo "WARNING: JSON report upload failed"
+                  else
+                    echo "WARNING: could not reach report server — reports in pod logs only"
+                  fi
+
+                  echo "=== kube-bench complete: PASS=${PASS} FAIL=${FAIL} WARN=${WARN} ==="
+
+              resources:
+                {{- toYaml .Values.kubeBench.resources | nindent 16 }}
+
+              volumeMounts:
+                - name: kube-bench-tmp
+                  mountPath: /tmp
+                # RKE2 control-plane config
+                - name: etc-rancher-rke2
+                  mountPath: /etc/rancher/rke2
+                  readOnly: true
+                - name: var-lib-rancher-rke2
+                  mountPath: /var/lib/rancher/rke2
+                  readOnly: true
+                # RKE2 symlinks /etc/kubernetes → /etc/rancher/rke2/; kube-bench resolves both
+                - name: var-lib-kubelet
+                  mountPath: /var/lib/kubelet
+                  readOnly: true
+                - name: var-lib-etcd
+                  mountPath: /var/lib/etcd
+                  readOnly: true
+                - name: etc-systemd
+                  mountPath: /etc/systemd
+                  readOnly: true
+                - name: lib-systemd
+                  mountPath: /lib/systemd
+                  readOnly: true
+                # /proc is intentionally not mounted — hostPID: true already shares the host
+                # PID namespace so the container's native /proc reflects host processes.
+                # Explicitly mounting host /proc as readOnly prevented runc from writing
+                # the SELinux process label to /proc/thread-self/attr/exec during container init.
+
+          volumes:
+            - name: kube-bench-tmp
+              emptyDir: {}
+            - name: etc-rancher-rke2
+              hostPath:
+                path: /etc/rancher/rke2
+                type: DirectoryOrCreate
+            - name: var-lib-rancher-rke2
+              hostPath:
+                path: /var/lib/rancher/rke2
+                type: DirectoryOrCreate
+            - name: var-lib-kubelet
+              hostPath:
+                path: /var/lib/kubelet
+                type: DirectoryOrCreate
+            - name: var-lib-etcd
+              hostPath:
+                path: /var/lib/etcd
+                type: DirectoryOrCreate
+            - name: etc-systemd
+              hostPath:
+                path: /etc/systemd
+            - name: lib-systemd
+              hostPath:
+                path: /lib/systemd
+{{- end }}

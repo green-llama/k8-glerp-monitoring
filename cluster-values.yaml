@@ -1,0 +1,51 @@
+# cluster-values.yaml
+# Fill this out for each cluster before running `make deploy`.
+# Never commit SMTP passwords or API keys here — store them in Kubernetes Secrets.
+
+cluster:
+  # Human-readable name used in alert annotations (e.g. "gl-dev2", "prod-cluster-1")
+  name: gl-dev2
+
+  # Base domain for GLerp sites on this cluster.
+  # Sites are expected at https://<company>.<domain>/login
+  domain: greenllama.tech
+
+  # Kubernetes namespace where Rancher Monitoring (kube-prometheus-stack) is deployed.
+  monitoringNamespace: cattle-monitoring-system
+
+alertmanager:
+  # SMTP relay for email alerts.
+  # Credentials must be stored in a Secret named `alertmanager-smtp-secret`
+  # in the monitoringNamespace (see docs/new-site-onboarding.md).
+  smtp:
+    host: smtp.example.com:587
+    from: alerts@greenllama.tech
+    # Comma-separated list of alert recipients
+    to: ops@greenllama.tech
+
+  # Optional: WhatsApp via Callmebot adapter (Phase 2).
+  # Set enabled: true and fill in values after deploying the adapter pod.
+  whatsapp:
+    enabled: false
+    webhookUrl: http://whatsapp-adapter.cattle-monitoring-system.svc.cluster.local:5000/alert
+
+blackboxExporter:
+  # Version of the prometheus-blackbox-exporter Helm chart to pin.
+  chartVersion: "9.4.0"
+  # Image tag
+  imageTag: "v0.25.0"
+
+# Internet connectivity probe targets — used to distinguish ISP loss from app failure.
+# Keep at least 3 distinct external endpoints.
+internetProbes:
+  - https://www.google.com
+  - https://www.cloudflare.com
+  - https://dns.quad9.net
+
+# Grafana Synthetic Monitoring (optional external vantage point).
+# Requires a free Grafana Cloud account. Leave empty to disable.
+syntheticMonitoring:
+  enabled: false
+  # Paste the Grafana Cloud stack ID and access token here after account creation.
+  stackId: ""
+  accessToken: ""

@@ -1,0 +1,89 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-storage-recording
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  groups:
+    # ── Longhorn namespace attribution ─────────────────────────────────────────
+    # Longhorn manager exports pvc_namespace directly on every volume metric —
+    # no join with kube-state-metrics needed. We just rename pvc_namespace to
+    # claimnamespace (the label name used throughout dashboards and alerts).
+    - name: glerp.storage.longhorn
+      interval: 60s
+      rules:
+        # Actual bytes written to each Longhorn volume, grouped by the namespace
+        # that owns the PVC.
+        - record: glerp:longhorn_namespace_usage_bytes
+          expr: |
+            sum by (claimnamespace) (
+              label_replace(
+                longhorn_volume_actual_size_bytes,
+                "claimnamespace", "$1", "pvc_namespace", "(.+)"
+              )
+            )
+
+        # Provisioned capacity per namespace (the requested PVC size, not actual use).
+        - record: glerp:longhorn_namespace_capacity_bytes
+          expr: |
+            sum by (claimnamespace) (
+              label_replace(
+                longhorn_volume_capacity_bytes,
+                "claimnamespace", "$1", "pvc_namespace", "(.+)"
+              )
+            )
+
+        # Cluster-wide Longhorn totals (for Fleet dashboard header stats).
+        - record: glerp:longhorn_cluster_usage_bytes
+          expr: sum(longhorn_node_storage_usage_bytes)
+
+        - record: glerp:longhorn_cluster_capacity_bytes
+          expr: sum(longhorn_node_storage_capacity_bytes)
+
+        - record: glerp:longhorn_cluster_reservable_bytes
+          expr: sum(longhorn_node_storage_reservable_bytes)
+
+        # Node-level utilization ratio (0–1) for threshold alerting.
+        - record: glerp:longhorn_node_usage_ratio
+          expr: |
+            longhorn_node_storage_usage_bytes
+            / longhorn_node_storage_capacity_bytes
+
+    # ── Longhorn per-customer soft-cap quota metrics ───────────────────────────
+    # Generated from the customers list in values.yaml.
+    # Only emitted for customers with an explicit quotaGi.longhorn value set.
+    # Customers without a soft cap use auto-detected PVC capacity for alerting.
+    - name: glerp.storage.quotas
+      interval: 60s
+      rules:
+        # Sentinel — ensures this group always has at least one rule so the
+        # PrometheusRule is accepted even when no customers have explicit quotas.
+        - record: glerp:storage_quota_configured
+          expr: vector(1)
+        {{- range .Values.customers }}
+        {{- if and .quotaGi .quotaGi.longhorn }}
+        - record: glerp:storage_quota_gi
+          expr: vector({{ .quotaGi.longhorn }})
+          labels:
+            namespace: {{ .namespace | quote }}
+            storage_type: longhorn
+            customer_name: {{ .name | quote }}
+            customer_slug: {{ .slug | quote }}
+        {{- end }}
+        {{- end }}
+
+    # ── PVC summary recording rules ────────────────────────────────────────────
+    - name: glerp.storage.pvc
+      interval: 60s
+      rules:
+        # Total provisioned Longhorn storage per namespace (auto-quota baseline).
+        - record: glerp:longhorn_namespace_provisioned_bytes
+          expr: |
+            sum by (namespace, storageclass) (
+              kube_persistentvolumeclaim_resource_requests_storage_bytes{
+                storageclass=~"longhorn.*|directpv.*"
+              }
+            )

@@ -1,0 +1,25 @@
+{{- if .Values.victoriaMetrics.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-victoriametrics-datasource
+  namespace: {{ .Values.grafana.datasourceNamespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    grafana_datasource: {{ .Values.grafana.datasourceLabel | quote }}
+data:
+  victoriametrics-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: GLerp — VictoriaMetrics
+        uid: glerp-vm
+        type: prometheus
+        url: http://{{ .Release.Name }}-victoriametrics.{{ .Values.namespace }}.svc:8428
+        access: proxy
+        isDefault: false
+        editable: false
+        jsonData:
+          timeInterval: "60s"
+          queryTimeout: "60s"
+          httpMethod: POST
+{{- end }}

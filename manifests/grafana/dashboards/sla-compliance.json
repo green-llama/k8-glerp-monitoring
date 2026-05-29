@@ -1,0 +1,434 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "#1F60C4",
+        "limit": 100,
+        "name": "Maintenance (this site)",
+        "showIn": 0,
+        "tags": ["maintenance", "$site"],
+        "type": "tags"
+      },
+      {
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "#1F60C4",
+        "limit": 100,
+        "name": "Maintenance (all sites)",
+        "showIn": 0,
+        "tags": ["maintenance", "all"],
+        "type": "tags"
+      }
+    ]
+  },
+  "description": "Monthly SLA compliance report for all GLerp sites. Set date range to reporting period, then export table to CSV. Defaults to VictoriaMetrics for accurate long-term uptime data (90-day retention).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    { "title": "Uptime Overview", "url": "/d/glerp-uptime-overview", "type": "link", "icon": "external link" }__MAINTENANCE_ADMIN_LINK__
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "SLA Summary — Selected Period",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Sites meeting the 99.5% SLA target over the selected time range",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Sites Meeting SLA",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(avg_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]) * 100 >= 99.5)",
+          "legendFormat": "Compliant sites",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Sites Breaching SLA",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(avg_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]) * 100 < 99.5) or vector(0)",
+          "legendFormat": "Breaching sites",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 98 }, { "color": "green", "value": 99.5 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Avg Uptime (All Sites)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "avg(avg_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range])) * 100",
+          "legendFormat": "Avg uptime",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 98 }, { "color": "green", "value": 99.5 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 5,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "ISP Uptime (selected period)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "avg(avg_over_time(probe_success{job=\"internet-connectivity\"}[$__range])) * 100",
+          "legendFormat": "ISP uptime",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 6,
+      "title": "Maintenance-Adjusted SLA — Selected Period",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+      "description": "Average uptime % across all selected sites with maintenance windows excluded from the calculation. During a defined maintenance window the downtime does not count against SLA.\n\nWhen no maintenance windows are defined this equals the raw figure above.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 98 }, { "color": "green", "value": 99.5 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 6 },
+      "id": 7,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Avg Adjusted Uptime (All Sites)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "clamp_max(\n  avg by() (\n    clamp_max(\n      (\n        sum by(site) (sum_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]))\n        + (\n          sum by(site) (sum_over_time(glerp_maintenance_excused_failures{site=~\"$site\"}[$__range]))\n          or\n          sum by(site) (sum_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]) * 0)\n        )\n      ) / sum by(site) (count_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range])) * 100,\n      100\n    )\n  ),\n  100\n)",
+          "legendFormat": "Adjusted avg uptime",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+      "description": "Sites meeting the 99.5% SLA target when maintenance windows are excluded from downtime calculations.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 6 },
+      "id": 8,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Sites Meeting SLA (adjusted)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(\n  clamp_max(\n    (\n      sum by(site) (sum_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]))\n      + (\n        sum by(site) (sum_over_time(glerp_maintenance_excused_failures{site=~\"$site\"}[$__range]))\n        or\n        sum by(site) (sum_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]) * 0)\n      )\n    ) / sum by(site) (count_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range])) * 100,\n    100\n  ) >= 99.5\n)",
+          "legendFormat": "Compliant (adjusted)",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+      "description": "Total excused downtime (maintenance windows) across all selected sites in the reporting period. Each site's maintenance samples are counted at the 60-second probe resolution.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 6 },
+      "id": 9,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Total Excused Minutes (maintenance)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(sum_over_time(glerp_maintenance_window{site=~\"$site\"}[$__range])) or vector(0)",
+          "legendFormat": "Excused minutes",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "id": 10,
+      "title": "Per-Site SLA Detail (export this table to CSV for reporting)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Export this table: click the panel title → Inspect → Data → Download CSV. Uptime % and Downtime (min) are calculated over the selected time range using the login-page content probe — the true functional uptime signal.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "inspect": false,
+            "minWidth": 100
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Site" },
+            "properties": [{ "id": "custom.width", "value": 200 }, { "id": "custom.displayMode", "value": "auto" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Uptime %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 3 },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 98 }, { "color": "green", "value": 99.5 }] } },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Downtime (min)" },
+            "properties": [
+              { "id": "unit", "value": "none" },
+              { "id": "decimals", "value": 1 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "SLA Status" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": { "text": "PASS", "color": "green", "index": 0 },
+                      "0": { "text": "FAIL", "color": "red", "index": 1 }
+                    }
+                  }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 11 },
+      "id": 11,
+      "options": {
+        "footer": { "show": false },
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Uptime %", "desc": false }]
+      },
+      "title": "SLA Compliance Table — Selected Period",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "avg_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range]) * 100",
+          "legendFormat": "{{ site }}",
+          "refId": "uptime",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "(1 - avg_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[$__range])) * $__range_s / 60",
+          "legendFormat": "{{ site }}",
+          "refId": "downtime",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "site": "Site",
+              "Value #uptime": "Uptime %",
+              "Value #downtime": "Downtime (min)"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "SLA Status",
+            "mode": "binary",
+            "binary": {
+              "left": "Uptime %",
+              "right": "99.5",
+              "operator": ">="
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              { "targetField": "SLA Status", "destinationType": "string", "dateFormat": "" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 20,
+      "title": "Uptime Trend (selected time range)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "custom": { "lineWidth": 1, "fillOpacity": 10 }
+        }
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+      "id": 21,
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "min"] }
+      },
+      "title": "Login Probe Success Rate — All Sites",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "probe_success{job=\"glerp-sites-login\", site=~\"$site\"}",
+          "legendFormat": "{{ site }}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["glerp", "sla", "compliance"],
+  "templating": {
+    "list": [
+      {
+        "hide": 2,
+        "includeAll": false,
+        "name": "vm_datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "GLerp.*VictoriaMetrics",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "GLerp — VictoriaMetrics",
+          "value": "glerp-vm"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+        "definition": "label_values(probe_success{job=\"glerp-sites-login\"}, site)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "label": "Site",
+        "multi": false,
+        "name": "site",
+        "options": [],
+        "query": {
+          "query": "label_values(probe_success{job=\"glerp-sites-login\"}, site)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GLerp — SLA Compliance",
+  "uid": "glerp-sla-compliance",
+  "version": 1
+}

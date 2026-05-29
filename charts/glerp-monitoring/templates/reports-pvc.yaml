@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "glerp-monitoring.fullname" . }}-reports
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: report-storage
+spec:
+  accessModes:
+    - {{ .Values.reports.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.reports.storageSize }}
+  {{- if .Values.reports.storageClassName }}
+  storageClassName: {{ .Values.reports.storageClassName }}
+  {{- end }}

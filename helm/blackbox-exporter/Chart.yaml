@@ -1,0 +1,9 @@
+apiVersion: v2
+name: glerp-blackbox
+description: Wrapper chart pinning the prometheus-blackbox-exporter version for GLerp monitoring
+type: application
+version: 0.1.0
+dependencies:
+  - name: prometheus-blackbox-exporter
+    version: "9.4.0"
+    repository: https://prometheus-community.github.io/helm-charts

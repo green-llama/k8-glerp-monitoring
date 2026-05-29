@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  annotations:
+    # Preserve this namespace on helm uninstall to protect the VictoriaMetrics PVC.
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}

@@ -1,0 +1,331 @@
+# k8-glerp-monitoring
+
+Kubernetes-native uptime monitoring for GLerp (ERPNext v16) sites and ISP connectivity.
+Designed for RKE2 clusters running Rancher Monitoring (kube-prometheus-stack).
+
+## What This Does
+
+- **Monitors all GLerp sites automatically** — add one Service with one label and one annotation per site; Prometheus discovers it within 60 seconds, no per-site config files needed.
+- **Three-tier health checks** — detects complete outages (Nginx down) AND partial outages (ERPNext workers degraded, login page malformed).
+- **ISP vs. application differentiation** — distinguishes your site being down from your ISP being down; suppresses site alerts during ISP outages.
+- **90-day SLA retention** — VictoriaMetrics stores probe metrics long-term so 30-day SLA reports are accurate (Prometheus alone only retains ~8-10 days).
+- **Grafana dashboards** — real-time status grid, 30-day SLA compliance table (CSV export), internet connectivity history, and a customer-facing SLA report.
+- **Email alerts** — after 2 minutes down (critical) or 5 minutes degraded (warning); clears automatically when the site recovers. Only GLerp-specific alerts are routed to your email; Kubernetes/Rancher platform alerts are suppressed.
+- **Maintenance windows** — optional browser-based admin tool to schedule windows, exclude them from SLA calculations, mark them on dashboards, and suppress alerts.
+
+---
+
+## Prerequisites
+
+- Rancher Monitoring (kube-prometheus-stack) installed in `cattle-monitoring-system`
+- Helm v3+ with the Green Llama chart repo added:
+  ```bash
+  helm repo add green-llama https://green-llama.github.io/helm-charts/
+  helm repo update
+  ```
+- A Kubernetes Secret containing your SMTP password — create this **before** installing the chart:
+  ```bash
+  kubectl create secret generic alertmanager-smtp-secret \
+    --namespace cattle-monitoring-system \
+    --from-literal=smtp_auth_password='YOUR_APP_PASSWORD'
+  ```
+  > If using Gmail with 2-Step Verification, use a Google App Password (Google Account → Security → App Passwords), not your login password. The `from:` address must match `authUsername:` exactly, or be a verified "Send mail as" alias.
+
+---
+
+## Installation
+
+### Step 1 — Install the chart
+
+Create a values override file (`glerp-monitoring-values.yaml`) — do not pass secrets via `--set`:
+
+```yaml
+cluster:
+  name: gl-prod               # shown in alert email subjects
+  domain: greenllama.tech     # base domain for GLerp sites
+
+alertmanager:
+  email:
+    smarthost: "smtp.gmail.com:587"
+    from: "rjbloesser@greenllama.tech"      # must match authUsername for Gmail
+    to: "ops@greenllama.tech"
+    authUsername: "rjbloesser@greenllama.tech"
+    requireTLS: true
+    passwordSecret:
+      name: alertmanager-smtp-secret        # Secret created in Prerequisites
+      key: smtp_auth_password
+```
+
+Then install:
+
+```bash
+helm install glerp-monitoring green-llama/glerp-monitoring \
+  --namespace cattle-monitoring-system \
+  --values glerp-monitoring-values.yaml
+```
+
+### Step 2 — Wire up Prometheus scrape jobs and remote write
+
+The chart creates a Secret (`glerp-monitoring-scrape-configs`) containing the Prometheus scrape
+configuration for all GLerp sites and ISP probes. Prometheus needs to be pointed at it. Add the
+following to the **rancher-monitoring** Helm values (Rancher UI → Apps → rancher-monitoring →
+Edit/Upgrade → Edit YAML):
+
+```yaml
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigsSecret:
+      enabled: true
+      name: glerp-monitoring-scrape-configs
+      key: scrape-configs.yaml
+    remoteWrite:
+      - url: http://glerp-monitoring-victoriametrics.cattle-monitoring-system.svc.cluster.local:8428/api/v1/write
+        writeRelabelConfigs:
+          - sourceLabels: [job]
+            regex: "glerp-sites-basic|glerp-sites-login|internet-connectivity"
+            action: keep
+```
+
+The `remoteWrite` block forwards probe metrics to VictoriaMetrics for 90-day retention.
+Without it, SLA dashboards only show data for the last 8-10 days (Prometheus default retention).
+
+The chart also creates a `grafana_datasource: "1"` ConfigMap in `cattle-dashboards`. Rancher
+Monitoring's Grafana runs a `grafana-init-sc-datasources` init container at pod startup that
+discovers this ConfigMap and provisions the VictoriaMetrics datasource automatically — no manual
+datasource configuration required. Ensure `grafana.sidecar.datasources.enabled: true` is set in
+your rancher-monitoring values (it is enabled by default).
+
+### Step 3 — Verify the base install
+
+Within ~60 seconds of saving the rancher-monitoring values:
+
+- **Prometheus UI → Status → Targets** — you should see `internet-connectivity` with 3 UP targets (Google, Cloudflare, Microsoft). The `glerp-sites-*` jobs will appear empty until a site Service is created (Step 4).
+- **Grafana → Dashboards → GLerp Monitoring** — the Internet Connectivity dashboard should show data immediately. Site dashboards populate after Step 4.
+- **Prometheus UI → Alerts** — the `glerp.uptime` rule group should be visible (inactive until a site is added).
+
+---
+
+## Adding a GLerp Site to Monitoring
+
+Each GLerp site needs a dedicated Kubernetes Service in its namespace. The Service acts purely as
+a Prometheus discovery target — Prometheus reads the public URL from the annotation and passes it
+to the Blackbox Exporter for probing. No selector is needed.
+
+Add the following to the site's GLerp Helm chart values under `extraObjects`:
+
+```yaml
+extraObjects:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      annotations:
+        glerp-monitoring/public-url: https://sitename.greenllama.tech
+      labels:
+        glerp-monitoring: enabled
+      name: glerp-monitoring-probe
+      namespace: sitename          # must match the site's Kubernetes namespace
+    spec:
+      ports:
+        - name: http
+          port: 8080
+          targetPort: 8080
+      type: ClusterIP
+```
+
+Replace `sitename` with the site's Kubernetes namespace (e.g., `backuptest`, `acmecorp`).
+The `site` label shown in all dashboards and alert emails is derived from this namespace.
+
+After the Helm upgrade, Prometheus discovers the new site within ~60 seconds. It will appear in:
+- Uptime Overview status grid
+- SLA Compliance table
+- Customer SLA Report (selectable from the Site dropdown)
+
+**Multiple sites** — repeat the `extraObjects` block in each site's own chart. Each site manages
+its own probe Service; there is no central list to maintain.
+
+---
+
+## Maintenance Windows
+
+The **Maintenance Admin** tool is an optional browser-based form included in the chart.
+On submit it simultaneously:
+
+- Writes the `glerp_maintenance_window` metric to VictoriaMetrics (adjusted SLA panels automatically exclude this period)
+- Creates a blue shaded annotation band on all monitoring dashboards
+- Creates an AlertManager silence so no alert emails fire during the window
+
+Deletion from the same UI expires the silence, removes the metric, and removes the annotation band
+from all dashboards immediately.
+
+### Enabling the Maintenance Admin
+
+Add to your values override:
+
+```yaml
+maintenanceAdmin:
+  enabled: true
+  hostname: "maintenance.greenllama.tech"   # DNS name reachable from admin's browser
+  externalDnsTarget: "pec.greenllama.tech"  # cluster ingress IP/hostname for external-dns (Cloudflare)
+                                             # leave empty to manage the DNS record manually
+  port: ""                                   # set if using a non-standard HTTPS port (e.g. "10443")
+  grafanaToken: ""                           # Grafana service account token (Editor role)
+  auth:
+    username: "admin"
+    password: ""                             # set a strong password
+```
+
+See [docs/deployment-guide.md](docs/deployment-guide.md) for the full setup procedure, including
+creating the Grafana service account token and enabling the dashboard link.
+
+---
+
+## Optional: Telegram and Slack Alerts
+
+In addition to email, the chart can send critical alerts to **Telegram** and/or **Slack** — useful
+for phone push notifications. Both are opt-in and can be enabled independently.
+
+### Telegram
+
+**One-time setup:**
+
+1. Message `@BotFather` on Telegram → `/newbot` → copy the bot token
+2. Add the bot to a group/channel, or start a personal chat with it
+3. Get your chat ID: add `@userinfobot` to the group, or message it directly for a personal chat ID
+   - Group/channel IDs are negative integers (e.g. `-1234567890`)
+   - Personal chat IDs are positive (e.g. `987654321`)
+4. Create the Kubernetes Secret:
+   ```bash
+   kubectl create secret generic telegram-alertmanager-secret \
+     --namespace cattle-monitoring-system \
+     --from-literal=bot_token='YOUR_BOT_TOKEN'
+   ```
+5. Enable in your values override:
+   ```yaml
+   alertmanager:
+     telegram:
+       enabled: true
+       chatId: -1234567890   # your chat/group ID
+       botTokenSecret:
+         name: telegram-alertmanager-secret
+         key: bot_token
+   ```
+6. `helm upgrade` — critical alerts will now also be sent to Telegram
+
+### Slack
+
+**One-time setup:**
+
+1. Slack → **Administration → Manage apps → Incoming Webhooks → Add New Webhook**
+   (or create a Slack App with Incoming Webhooks enabled)
+2. Select the target channel and copy the webhook URL
+3. Create the Kubernetes Secret:
+   ```bash
+   kubectl create secret generic slack-alertmanager-secret \
+     --namespace cattle-monitoring-system \
+     --from-literal=webhook_url='https://hooks.slack.com/services/...'
+   ```
+4. Enable in your values override:
+   ```yaml
+   alertmanager:
+     slack:
+       enabled: true
+       channel: "#alerts"    # must match the webhook's workspace
+       webhookSecret:
+         name: slack-alertmanager-secret
+         key: webhook_url
+   ```
+5. `helm upgrade` — critical alerts will now also be sent to Slack
+
+> **Both can be enabled simultaneously.** When enabled, critical alerts are sent to email AND to
+> the messaging channel(s) at the same time. Warning and info severity alerts go to email only.
+
+---
+
+## Customer Reporting
+
+The **Customer SLA Report** dashboard (`GLerp Monitoring → GLerp — Customer SLA Report`) is
+designed for customer-facing use:
+
+- Select the customer's site from the **Site** dropdown
+- Set the time range to the reporting period (default: last 30 days)
+- Shows both raw uptime % and maintenance-adjusted uptime %
+- Data sourced from VictoriaMetrics for accurate long-range calculations
+
+### Sharing a live link
+
+1. Open the Customer SLA Report with the correct site selected
+2. **Share → Public Dashboard → Enable**
+3. Copy the public URL — customers view it without a Grafana login
+4. Append `?var-site=<namespace>` to pre-select a specific customer's site
+
+### PDF export
+
+Enable the Grafana image renderer in rancher-monitoring values:
+
+```yaml
+grafana:
+  imageRenderer:
+    enabled: true
+```
+
+After enabling, **Share → Export as PDF** is available on any dashboard.
+
+---
+
+## Alert Reference
+
+| Alert | Condition | Severity |
+|---|---|---|
+| `GLerpSiteDown` | Site HTTP probe fails ≥ 2 min, ISP healthy | Critical |
+| `GLerpSiteDegraded` | Site reachable but login page malformed ≥ 5 min | Warning |
+| `GLerpSiteDownISPSuspected` | Site down AND ISP probes also failing | Warning |
+| `GLerpSiteCertExpiringSoon` | TLS certificate expires in < 30 days | Warning |
+| `ISPConnectivityLost` | Majority of external probes fail ≥ 2 min | Critical |
+| `ExternalProbePartialFailure` | One external probe failing ≥ 10 min | Info |
+
+**ISP suppression**: during an `ISPConnectivityLost` event, all `GLerpSiteDown` and
+`GLerpSiteDegraded` alerts are automatically suppressed — one ISP alert fires instead of one
+per site.
+
+Only alerts with a GLerp `alert_type` label are routed to your email receiver. Kubernetes and
+Rancher platform alerts are unaffected.
+
+---
+
+## SLA Target
+
+**99.5% monthly uptime** (≤ 3.6 hours downtime per 30-day month per site).
+
+The SLA signal uses the login-tier probe — both complete outages and degraded states (site
+responds but ERPNext is broken) count against SLA. Maintenance-adjusted uptime excludes any
+downtime that occurred within a defined maintenance window.
+
+---
+
+## Repository Structure
+
+```
+charts/
+└── glerp-monitoring/
+    ├── Chart.yaml
+    ├── values.yaml                          ← all configurable settings with defaults
+    ├── files/
+    │   ├── dashboards/                      ← Grafana dashboard JSON files
+    │   └── maintenance-admin-server.py      ← maintenance admin HTTP server
+    └── templates/
+        ├── additional-scrape-configs-secret.yaml   ← site + ISP probe scrape jobs
+        ├── alertmanager-config.yaml                ← email routing + ISP inhibition
+        ├── grafana-dashboards-configmap.yaml        ← dashboard provisioning
+        ├── grafana-datasource-configmap.yaml        ← VictoriaMetrics datasource
+        ├── maintenance-admin.yaml                   ← optional admin Deployment + IngressRoute
+        ├── prometheusrule-alerts-glerp.yaml         ← site alert rules
+        ├── prometheusrule-alerts-internet.yaml      ← ISP alert rules
+        ├── prometheusrule-recording.yaml            ← site health state recording rule
+        └── victoriametrics.yaml                     ← VM Deployment + PVC + Service
+```
+
+---
+
+## License
+
+Internal use — Green Llama Technologies.

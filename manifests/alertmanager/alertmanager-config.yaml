@@ -1,0 +1,118 @@
+# AlertmanagerConfig — namespace-scoped, non-destructive to Rancher's root config.
+#
+# Prerequisites:
+#   1. Create the SMTP credentials Secret before applying this:
+#      kubectl create secret generic alertmanager-smtp-secret \
+#        --namespace cattle-monitoring-system \
+#        --from-literal=smtp_auth_password='YOUR_SMTP_PASSWORD'
+#
+#   2. (Optional) For WhatsApp via Callmebot, create:
+#      kubectl create secret generic alertmanager-whatsapp-secret \
+#        --namespace cattle-monitoring-system \
+#        --from-literal=whatsapp_apikey='YOUR_CALLMEBOT_APIKEY' \
+#        --from-literal=whatsapp_phone='YOUR_E164_PHONE_NUMBER'
+#
+# Alert routing logic:
+#   critical (application)     → email + whatsapp (if enabled)
+#   critical (isp)             → email + whatsapp (if enabled)
+#   warning (degraded)         → email only
+#   info (restored/partial)    → email only
+#
+# Inhibition: GLerpSiteDown and GLerpSiteDegraded are suppressed while
+# ISPConnectivityLost is active — prevents alert storm during ISP outages.
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: glerp-monitoring
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: glerp-monitoring
+    release: rancher-monitoring
+spec:
+  # ── Route tree ─────────────────────────────────────────────────────────────
+  route:
+    receiver: email-alerts
+    groupBy: [alertname, site]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    routes:
+      # Critical application alerts → email (+ whatsapp if enabled)
+      - matchers:
+          - name: severity
+            value: critical
+          - name: alert_type
+            matchType: =~
+            value: "application|isp"
+        receiver: email-alerts
+        repeatInterval: 2h
+
+      # Degraded alerts → email only (less urgent)
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: email-alerts
+        repeatInterval: 4h
+
+      # Info/restored → email once, no repeat
+      - matchers:
+          - name: severity
+            value: info
+        receiver: email-alerts
+        repeatInterval: 0s
+
+  # ── Inhibition rules ────────────────────────────────────────────────────────
+  inhibitRules:
+    # Suppress per-site alerts when ISP is confirmed down.
+    # This prevents a flood of "site X down" emails during an ISP outage.
+    - sourceMatch:
+        - name: alertname
+          value: ISPConnectivityLost
+      targetMatch:
+        - name: alert_type
+          matchType: =~
+          value: "application|application_degraded|isp_suspected"
+      equal: []
+
+  # ── Receivers ───────────────────────────────────────────────────────────────
+  receivers:
+    # ── Email (primary channel) ────────────────────────────────────────────────
+    - name: email-alerts
+      emailConfigs:
+        - to: ops@greenllama.tech      # Update in cluster-values.yaml
+          from: alerts@greenllama.tech # Update in cluster-values.yaml
+          smarthost: smtp.example.com:587  # Update to your SMTP relay
+          authUsername: alerts@greenllama.tech
+          authPassword:
+            name: alertmanager-smtp-secret
+            key: smtp_auth_password
+          requireTLS: true
+          sendResolved: true
+          headers:
+            subject: '[GLerp Monitor] {{ .GroupLabels.alertname }}{{ if .GroupLabels.site }} — {{ .GroupLabels.site }}{{ end }}'
+          html: |
+            {{ range .Alerts }}
+            <h3>{{ .Annotations.summary }}</h3>
+            <p><strong>Status:</strong> {{ .Status }}</p>
+            <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+            <p>{{ .Annotations.description }}</p>
+            {{ if .Annotations.runbook_url }}<p><a href="{{ .Annotations.runbook_url }}">View Runbook</a></p>{{ end }}
+            <p><small>Started: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</small></p>
+            {{ end }}
+
+    # ── WhatsApp via Callmebot (optional — Phase 2) ────────────────────────────
+    # To enable:
+    #   1. Each recipient must WhatsApp the Callmebot number to register:
+    #      Send "I allow callmebot to send me messages" to +34 644 73 04 20
+    #   2. You will receive an API key via WhatsApp.
+    #   3. Create the alertmanager-whatsapp-secret (see header comments above).
+    #   4. Deploy the whatsapp-adapter pod (see docs/whatsapp-setup.md).
+    #   5. Uncomment the routes above that reference whatsapp-alerts.
+    #   6. Uncomment the receiver below and update the webhookUrl.
+    #
+    # - name: whatsapp-alerts
+    #   webhookConfigs:
+    #     - url: http://whatsapp-adapter.cattle-monitoring-system.svc.cluster.local:5000/alert
+    #       sendResolved: true
+    #       maxAlerts: 5

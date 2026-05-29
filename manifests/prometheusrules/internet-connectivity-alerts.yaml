@@ -1,0 +1,65 @@
+# Alert rules for internet / ISP connectivity.
+# Uses the internet-connectivity Probe job as the reference signal.
+# A majority-vote approach (< 0.5 success rate across 3 targets) avoids
+# false positives from a single CDN or endpoint being blocked.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: internet-connectivity-alerts
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: glerp-monitoring
+    release: rancher-monitoring
+spec:
+  groups:
+    - name: internet.connectivity
+      rules:
+        # ── ISP / internet outage ──────────────────────────────────────────────
+        # Fires when the majority of external probe targets fail for 2 minutes.
+        - alert: ISPConnectivityLost
+          expr: avg(probe_success{job="internet-connectivity"}) < 0.5
+          for: 2m
+          labels:
+            severity: critical
+            alert_type: isp
+            team: ops
+          annotations:
+            summary: "ISP / Internet connectivity LOST"
+            description: >
+              More than half of the external internet probes (Google, Cloudflare, Quad9)
+              are failing. The cluster has likely lost its ISP connection.
+              All GLerp site alerts during this period are suppressed — this is the root cause.
+              Check your router/firewall and ISP status page.
+
+        # ── Single external target degraded (early warning, not paged) ─────────
+        - alert: ExternalProbePartialFailure
+          expr: |
+            avg(probe_success{job="internet-connectivity"}) < 1
+            and avg(probe_success{job="internet-connectivity"}) >= 0.5
+          for: 10m
+          labels:
+            severity: info
+            alert_type: isp_partial
+            team: ops
+          annotations:
+            summary: "One external internet probe is failing"
+            description: >
+              One of the three external probe targets (Google, Cloudflare, Quad9) has been
+              failing for 10 minutes. This is not a full ISP outage but may indicate a
+              routing problem to a specific CDN. No site alerts are suppressed.
+              Review: {{ $labels.instance }}
+
+        # ── ISP restored (resolution notification) ─────────────────────────────
+        - alert: ISPConnectivityRestored
+          expr: avg(probe_success{job="internet-connectivity"}) == 1
+          for: 2m
+          labels:
+            severity: info
+            alert_type: isp_restored
+            team: ops
+          annotations:
+            summary: "ISP / Internet connectivity RESTORED"
+            description: >
+              All external internet probes are succeeding again. ISP connectivity has
+              been restored. Site alerts will resume normal operation.

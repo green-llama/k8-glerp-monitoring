@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-recording-rules
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  groups:
+    - name: glerp.recording.realtime
+      interval: 30s
+      rules:
+        # ── 3-state health: 2=up, 1=degraded, 0=down ──────────────────────────
+        # Used by the Grafana Uptime Overview status grid (real-time).
+        # Evaluated against current probe_success values — no long-term lookback.
+        - record: glerp:site_health_state
+          expr: |
+            max by (site) (
+              probe_success{job="glerp-sites-basic"}
+              * on(site, instance) group_left()
+              (1 + probe_success{job="glerp-sites-login"})
+            )
+
+    # NOTE: Long-term SLA ratios (30-day uptime %, downtime minutes) are NOT
+    # computed here as recording rules. Prometheus retains data for only
+    # {{ .Values.prometheusRetentionNote | default "~10 days" }}, so a [30d]
+    # lookback would silently return incorrect results.
+    #
+    # Instead, the SLA Compliance dashboard queries VictoriaMetrics directly,
+    # which receives probe metrics via remoteWrite and retains them for
+    # {{ .Values.victoriaMetrics.retention }}. The dashboard computes:
+    #
+    #   avg_over_time(probe_success{job="glerp-sites-login"}[$__range]) * 100
+    #
+    # where $__range expands to whatever time window the user selects in Grafana
+    # (e.g., "Last 30 days" = accurate 30-day SLA). This gives correct results
+    # and lets the user select any reporting period they need.

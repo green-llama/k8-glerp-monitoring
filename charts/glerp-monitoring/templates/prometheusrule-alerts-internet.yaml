@@ -1,0 +1,44 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-internet-alerts
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  groups:
+    - name: internet.connectivity
+      rules:
+        # ── Full ISP outage ────────────────────────────────────────────────────
+        - alert: ISPConnectivityLost
+          expr: avg(probe_success{job="internet-connectivity"}) < {{ .Values.alerts.ispFailureThreshold }}
+          for: {{ .Values.alerts.ispDownMinutes }}m
+          labels:
+            severity: critical
+            alert_type: isp
+            namespace: {{ .Values.namespace }}
+          annotations:
+            summary: "ISP / Internet connectivity LOST ({{ .Values.cluster.name }})"
+            description: >
+              More than half of the external internet probes ({{ join ", " .Values.internetProbes.targets }})
+              are failing. The cluster has likely lost its ISP connection.
+              All GLerp site alerts are suppressed during this outage — this is the root cause.
+
+        # ── Single external target degraded (early warning) ────────────────────
+        - alert: ExternalProbePartialFailure
+          expr: |
+            avg(probe_success{job="internet-connectivity"}) < 1
+            and avg(probe_success{job="internet-connectivity"}) >= {{ .Values.alerts.ispFailureThreshold }}
+          for: 10m
+          labels:
+            severity: info
+            alert_type: isp_partial
+            namespace: {{ .Values.namespace }}
+          annotations:
+            summary: "One external internet probe is failing ({{ .Values.cluster.name }})"
+            description: >
+              One of the external probe targets is failing for 10+ minutes.
+              This is not a full ISP outage and does not suppress site alerts.
+              Check: {{ "{{" }} $labels.instance {{ "}}" }}
+

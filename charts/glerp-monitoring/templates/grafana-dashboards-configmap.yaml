@@ -1,0 +1,45 @@
+{{- /*
+Grafana dashboard ConfigMap.
+Rancher Monitoring's Grafana sidecar watches for ConfigMaps with the label
+grafana_dashboard="1" and auto-imports them. Dashboards appear in Grafana
+within ~60 seconds of this ConfigMap being created — no Grafana restart needed.
+
+All eight dashboards (4 uptime + 4 storage) are embedded from files/dashboards/.
+The security dashboard is in a separate ConfigMap (grafana-security-dashboard-configmap.yaml)
+because it requires Helm template expression processing for the report server URL.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-dashboards
+  namespace: {{ .Values.grafana.dashboardNamespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    grafana_dashboard: {{ .Values.grafana.dashboardLabel | quote }}
+  annotations:
+    grafana_folder: {{ .Values.grafana.folderName | quote }}
+{{- $maintLink := "" }}
+{{- if and .Values.maintenanceAdmin.enabled .Values.maintenanceAdmin.hostname }}
+{{- $maintUrl := printf "https://%s" .Values.maintenanceAdmin.hostname }}
+{{- if .Values.maintenanceAdmin.port }}
+{{- $maintUrl = printf "https://%s:%s" .Values.maintenanceAdmin.hostname .Values.maintenanceAdmin.port }}
+{{- end }}
+{{- $maintLink = printf ",\n    { \"title\": \"Maintenance Admin\", \"url\": \"%s\", \"type\": \"link\", \"icon\": \"external link\", \"targetBlank\": true }" $maintUrl }}
+{{- end }}
+data:
+  uptime-overview.json: |-
+    {{ .Files.Get "files/dashboards/uptime-overview.json" | replace "__MAINTENANCE_ADMIN_LINK__" $maintLink | nindent 4 }}
+  sla-compliance.json: |-
+    {{ .Files.Get "files/dashboards/sla-compliance.json" | replace "__MAINTENANCE_ADMIN_LINK__" $maintLink | nindent 4 }}
+  internet-connectivity.json: |-
+    {{ .Files.Get "files/dashboards/internet-connectivity.json" | replace "__MAINTENANCE_ADMIN_LINK__" $maintLink | nindent 4 }}
+  customer-sla-report.json: |-
+    {{ .Files.Get "files/dashboards/customer-sla-report.json" | replace "__MAINTENANCE_ADMIN_LINK__" $maintLink | nindent 4 }}
+  glerp-storage-fleet.json: |-
+    {{ .Files.Get "files/dashboards/glerp-storage-fleet.json" | nindent 4 }}
+  glerp-storage-customer.json: |-
+    {{ .Files.Get "files/dashboards/glerp-storage-customer.json" | nindent 4 }}
+  glerp-storage-namespaces.json: |-
+    {{ .Files.Get "files/dashboards/glerp-storage-namespaces.json" | nindent 4 }}
+  glerp-storage-growth.json: |-
+    {{ .Files.Get "files/dashboards/glerp-storage-growth.json" | nindent 4 }}

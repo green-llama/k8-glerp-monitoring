@@ -1,0 +1,527 @@
+{{- if true }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "glerp-monitoring.fullname" . }}-grafana-dashboard
+  namespace: {{ .Values.grafana.dashboardNamespace }}
+  labels:
+    grafana_dashboard: {{ .Values.grafana.dashboardLabel | quote }}
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana-dashboard
+  annotations:
+    grafana_folder: {{ .Values.grafana.folderName | quote }}
+data:
+  glerp-monitoring.json: |
+    {
+      "__inputs": [],
+      "__requires": [
+        { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0" },
+        { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+      ],
+      "annotations": { "list": [] },
+      "description": "GLerp Security — CIS/SOC2 Compliance Dashboard. Trivy Operator (continuous), kube-bench (weekly CIS), OWASP ZAP (weekly web app).",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [
+        {
+          "icon": "external link",
+          "tags": [],
+          "targetBlank": true,
+          "title": "Security Reports",
+          "tooltip": "Browse kube-bench and ZAP HTML reports",
+          "type": "link",
+          "url": "https://{{ .Values.reportHostname }}{{ if .Values.reportPort }}:{{ .Values.reportPort }}{{ end }}/security/"
+        }
+      ],
+      "panels": [
+
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 1,
+          "title": "Executive Security Overview",
+          "type": "row"
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Fixable Critical + High CVEs per image tracked by Trivy — fleet-size-normalized so adding namespaces does not inflate the score. 'Fixable' means a patched version of a dependency exists, but does NOT always mean you can patch today — upstream images (MetalLB, Longhorn, etc.) must first incorporate the dependency fix and ship a new release. A falling density trend over time is the meaningful SOC2 evidence. Enterprise reality: 10–25 is typical for actively-maintained infrastructure images on a quarterly patch cycle; < 10 reflects aggressive patching or distroless base images. Target < 15 (green). SOC2 CC6.6.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green",  "value": null },
+                { "color": "yellow", "value": 15 },
+                { "color": "red",    "value": 30 }
+              ]},
+              "unit": "none", "min": 0, "max": 50,
+              "decimals": 2
+            }
+          },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+          "id": 2,
+          "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+          "title": "Fleet CVE Density — Fixable C+H per Image",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "sum(trivy_image_vulnerabilities{severity=~\"Critical|High\"}) / count(count by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities))",
+              "legendFormat": "CVEs / Image",
+              "refId": "A"
+            }
+          ]
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "CIS Kubernetes Benchmark pass rate from the most recent kube-bench run against the RKE2 CIS 1.7 profile. kube-bench runs on the control-plane node to access API server, etcd, scheduler, and kubelet configs. Some CIS controls (audit log shipping destinations, certain pod security policies) require deliberate exceptions that should be documented in a risk register — a score of 70–85% is realistic and acceptable for a well-hardened cluster. SOC2 CC6.1. Target ≥ 70%.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "red",    "value": null },
+                { "color": "yellow", "value": 50 },
+                { "color": "green",  "value": 70 }
+              ]},
+              "unit": "percent", "min": 0, "max": 100
+            }
+          },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+          "id": 3,
+          "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+          "title": "CIS Compliance Score",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "100 * sum(kube_bench_total_pass) / (sum(kube_bench_total_pass) + sum(kube_bench_total_fail) + 0.001)",
+              "legendFormat": "CIS Pass Rate",
+              "refId": "A"
+            }
+          ]
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Web application risk score derived from OWASP ZAP passive scan results. Penalises High-risk findings (−20 pts each) and Medium-risk findings (−5 pts each). Run weekly against all GLerp customer URLs. SOC2 CC6.6 — application-layer security. Target: ≥ 80. Score 100 when no High or Medium alerts are detected.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "red",    "value": null },
+                { "color": "yellow", "value": 60 },
+                { "color": "green",  "value": 80 }
+              ]},
+              "unit": "none", "min": 0, "max": 100
+            }
+          },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+          "id": 4,
+          "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": true, "showThresholdMarkers": true },
+          "title": "ZAP Web App Risk Score",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "clamp_min(100 - (sum(zap_alerts_total{job=\"zap\", risk=\"High\"}) or vector(0)) * 20 - (sum(zap_alerts_total{job=\"zap\", risk=\"Medium\"}) or vector(0)) * 5, 0)",
+              "legendFormat": "Risk Score",
+              "refId": "A"
+            }
+          ]
+        },
+
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
+          "id": 5,
+          "title": "Container Image Vulnerabilities — Trivy Operator",
+          "type": "row"
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Fixable CVE counts by severity — only CVEs with a patched image version available are shown (ignoreUnfixed: true). Trivy Operator re-scans every 6 hours across all namespaces. Every finding here is directly actionable: update the image to the version shown in the VulnerabilityReport. SOC2 CC7.1 — detection and response to security events.",
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Critical" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-red",  "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "High" },     "properties": [{ "id": "color", "value": { "fixedColor": "orange",    "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Medium" },   "properties": [{ "id": "color", "value": { "fixedColor": "yellow",    "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Low" },      "properties": [{ "id": "color", "value": { "fixedColor": "green",     "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Unknown" },  "properties": [{ "id": "color", "value": { "fixedColor": "blue",      "mode": "fixed" } }] }
+            ]
+          },
+          "gridPos": { "h": 8, "w": 6, "x": 0, "y": 9 },
+          "id": 6,
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "title": "CVEs by Severity — All Namespaces",
+          "type": "stat",
+          "targets": [
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Critical\"}) or vector(0)", "legendFormat": "Critical", "refId": "A" },
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"High\"})     or vector(0)", "legendFormat": "High",     "refId": "B" },
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Medium\"})   or vector(0)", "legendFormat": "Medium",   "refId": "C" },
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Low\"})      or vector(0)", "legendFormat": "Low",      "refId": "D" },
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Unknown\"})  or vector(0)", "legendFormat": "Unknown",  "refId": "E" }
+          ]
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "description": "Raw fixable CVE counts (left axis) plus fleet-normalized C+H density (right axis, dashed purple). The density line accounts for fleet growth — if you add namespaces over time the raw counts naturally rise, but a falling or flat density line means patching is keeping pace. Use the density trend as your SOC2 evidence of continuous improvement. Data points appear as Trivy completes its 6-hour scan cycles.",
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 8 } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Critical" }, "properties": [
+                { "id": "color", "value": { "fixedColor": "dark-red", "mode": "fixed" } }
+              ]},
+              { "matcher": { "id": "byName", "options": "High" }, "properties": [
+                { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+              ]},
+              { "matcher": { "id": "byName", "options": "Medium" }, "properties": [
+                { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }
+              ]},
+              { "matcher": { "id": "byName", "options": "C+H Density" }, "properties": [
+                { "id": "color",                "value": { "fixedColor": "purple", "mode": "fixed" } },
+                { "id": "custom.lineWidth",     "value": 2 },
+                { "id": "custom.lineStyle",     "value": { "fill": "dash", "dash": [8, 4] } },
+                { "id": "custom.fillOpacity",   "value": 0 },
+                { "id": "custom.axisPlacement", "value": "right" },
+                { "id": "custom.axisLabel",     "value": "CVEs / Image" },
+                { "id": "custom.axisSoftMin",   "value": 0 },
+                { "id": "unit",                 "value": "none" }
+              ]}
+            ]
+          },
+          "gridPos": { "h": 8, "w": 18, "x": 6, "y": 9 },
+          "id": 7,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "CVE Trend — Raw Counts (left) + Fleet Density (right, dashed)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Critical\"}) or vector(0)", "legendFormat": "Critical", "refId": "A" },
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"High\"})     or vector(0)", "legendFormat": "High",     "refId": "B" },
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Medium\"})   or vector(0)", "legendFormat": "Medium",   "refId": "C" },
+            {
+              "expr": "sum(trivy_image_vulnerabilities{severity=~\"Critical|High\"}) / count(count by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities))",
+              "legendFormat": "C+H Density",
+              "refId": "D"
+            }
+          ]
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Fixable Critical and High CVEs per workload and image — every row has a patch available today. Critical and High are separate columns so each carries its own colour scale (red shades = Critical severity, orange shades = High severity). Workload is the Kubernetes resource name (Deployment/StatefulSet/DaemonSet). Fixed version and individual CVE IDs are in the VulnerabilityReport CRD — run: kubectl get vulnerabilityreport -n <namespace> -o json | jq '.report.vulnerabilities[] | select(.severity==\"CRITICAL\") | {id:.vulnerabilityID, fixedIn:.fixedVersion}' to see what version to upgrade to. SOC2 CC6.6.",
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left", "displayMode": "auto", "minWidth": 60 } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Namespace" }, "properties": [{ "id": "custom.width", "value": 160 }] },
+              { "matcher": { "id": "byName", "options": "Workload" },  "properties": [{ "id": "custom.width", "value": 120 }] },
+              { "matcher": { "id": "byName", "options": "Image" },     "properties": [{ "id": "custom.width", "value": 340 }] },
+              { "matcher": { "id": "byName", "options": "Critical" }, "properties": [
+                { "id": "custom.width", "value": 90 },
+                { "id": "color", "value": { "mode": "thresholds" } },
+                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                  { "color": "light-red",     "value": null },
+                  { "color": "semi-dark-red", "value": 4 },
+                  { "color": "dark-red",      "value": 8 }
+                ]}},
+                { "id": "custom.displayMode", "value": "color-background" }
+              ]},
+              { "matcher": { "id": "byName", "options": "High" }, "properties": [
+                { "id": "custom.width", "value": 90 },
+                { "id": "color", "value": { "mode": "thresholds" } },
+                { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                  { "color": "light-orange",     "value": null },
+                  { "color": "semi-dark-orange", "value": 6 },
+                  { "color": "dark-orange",      "value": 12 }
+                ]}},
+                { "id": "custom.displayMode", "value": "color-background" }
+              ]}
+            ]
+          },
+          "gridPos": { "h": 9, "w": 14, "x": 0, "y": 17 },
+          "id": 8,
+          "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Critical" }] },
+          "title": "Fixable Critical & High CVEs — by Workload and Image",
+          "type": "table",
+          "targets": [
+            {
+              "expr": "sum by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities{severity=\"Critical\"}) > 0",
+              "legendFormat": "",
+              "refId": "A",
+              "instant": true,
+              "format": "table"
+            },
+            {
+              "expr": "sum by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities{severity=\"High\"}) > 0",
+              "legendFormat": "",
+              "refId": "B",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            { "id": "merge", "options": {} },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "namespace":     "Namespace",
+                  "resource_name": "Workload",
+                  "image_tag":     "Image",
+                  "Value #A":      "Critical",
+                  "Value #B":      "High"
+                },
+                "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true }
+              }
+            }
+          ]
+        },
+
+        {
+          "gridPos": { "h": 9, "w": 10, "x": 14, "y": 17 },
+          "id": 21,
+          "options": {
+            "content": "### CVEs — What They Are & How to Remediate\n\n**CVE** (Common Vulnerabilities & Exposures) — a public identifier for a known security flaw in a software component, published by NIST.\n\n**Why your images have CVEs:** Container images bundle dozens of open-source libraries. When a vulnerability is discovered in a library, a CVE is published. Trivy compares your images against the NVD database.\n\n**\"Fixable\" means actionable:** This table shows *only* CVEs where a patched dependency version exists. To fix:\n1. Find the target version: `kubectl get vulnerabilityreport -n <ns> <name> -o json | jq '.report.vulnerabilities[] | select(.severity==\"CRITICAL\") | {id:.vulnerabilityID, fixedIn:.fixedVersion}'`\n2. The upstream image (Vault, Longhorn, etc.) must ship a release that picks up the fix\n3. Update the workload to that newer image tag\n\n**Is it normal?** Yes — a density of 10–30 C+H CVEs per image is typical for enterprise infrastructure images on a quarterly patch cycle. The *downward trend* over time is the SOC2 evidence that matters.",
+            "mode": "markdown"
+          },
+          "title": "CVE Explanation & Remediation Guide",
+          "type": "text"
+        },
+
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+          "id": 9,
+          "title": "CIS Kubernetes Benchmark — kube-bench",
+          "type": "row"
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Check counts from the most recent kube-bench run against CIS RKE2 1.7. PASS = control satisfied. FAIL = requires remediation. WARN = best-practice advisory (not blocking). kube-bench runs with elevated privileges and mounts host paths to inspect actual RKE2 node configuration. SOC2 CC6.1 and CC6.6 — infrastructure hardening evidence.",
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "PASS" }, "properties": [{ "id": "color", "value": { "fixedColor": "green",            "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "FAIL" }, "properties": [{ "id": "color", "value": { "fixedColor": "red",              "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "WARN" }, "properties": [{ "id": "color", "value": { "fixedColor": "semi-dark-yellow", "mode": "fixed" } }] }
+            ]
+          },
+          "gridPos": { "h": 7, "w": 6, "x": 0, "y": 27 },
+          "id": 10,
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "title": "kube-bench — Latest CIS Check Results",
+          "type": "stat",
+          "targets": [
+            { "expr": "sum(kube_bench_total_pass) or vector(0)", "legendFormat": "PASS", "refId": "A" },
+            { "expr": "sum(kube_bench_total_fail) or vector(0)", "legendFormat": "FAIL", "refId": "B" },
+            { "expr": "sum(kube_bench_total_warn) or vector(0)", "legendFormat": "WARN", "refId": "C" }
+          ]
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "description": "Weekly trend of CIS Kubernetes Benchmark results. Each data point represents one kube-bench run (Sunday 03:00 UTC). A decreasing FAIL count indicates hardening progress. Metrics are pushed to Prometheus Pushgateway immediately after each job and retained for 90 days.",
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 8 } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "PASS" }, "properties": [{ "id": "color", "value": { "fixedColor": "green",            "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "FAIL" }, "properties": [{ "id": "color", "value": { "fixedColor": "red",              "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "WARN" }, "properties": [{ "id": "color", "value": { "fixedColor": "semi-dark-yellow", "mode": "fixed" } }] }
+            ]
+          },
+          "gridPos": { "h": 7, "w": 12, "x": 6, "y": 27 },
+          "id": 11,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "kube-bench — CIS Results Trend (Weekly)",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "sum(kube_bench_total_pass) or vector(0)", "legendFormat": "PASS", "refId": "A" },
+            { "expr": "sum(kube_bench_total_fail) or vector(0)", "legendFormat": "FAIL", "refId": "B" },
+            { "expr": "sum(kube_bench_total_warn) or vector(0)", "legendFormat": "WARN", "refId": "C" }
+          ]
+        },
+
+        {
+          "gridPos": { "h": 7, "w": 6, "x": 18, "y": 27 },
+          "id": 12,
+          "options": {
+            "content": "### kube-bench Reports\n\nFull per-control PASS/FAIL/WARN detail with remediation steps:\n\n**[Browse kube-bench reports ↗](https://{{ .Values.reportHostname }}{{ if .Values.reportPort }}:{{ .Values.reportPort }}{{ end }}/security/kube-bench/)**\n\nOpen the latest `.txt` or `.json` file for an auditor-ready check-by-check breakdown.\n\nBenchmark: `{{ .Values.kubeBench.benchmark }}`  \nSchedule: every Sunday 03:00 UTC",
+            "mode": "markdown"
+          },
+          "title": "Detailed CIS Reports",
+          "type": "text"
+        },
+
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+          "id": 13,
+          "title": "Web Application Security — OWASP ZAP",
+          "type": "row"
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Distinct alert type counts from the most recent ZAP scan across all GLerp customer URLs. High = active security risk requiring remediation. Medium = should be reviewed. Low and Informational = advisory only. ZAP runs a passive baseline scan (no attack payloads) which is safe to run against production. SOC2 CC6.6 — application vulnerability scanning evidence.",
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "High" },          "properties": [{ "id": "color", "value": { "fixedColor": "red",     "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Medium" },        "properties": [{ "id": "color", "value": { "fixedColor": "orange",  "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Low" },           "properties": [{ "id": "color", "value": { "fixedColor": "yellow",  "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Informational" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue",    "mode": "fixed" } }] }
+            ]
+          },
+          "gridPos": { "h": 7, "w": 6, "x": 0, "y": 35 },
+          "id": 14,
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "title": "ZAP Alert Types — All Targets",
+          "type": "stat",
+          "targets": [
+            { "expr": "sum(zap_alerts_total{job=\"zap\", risk=\"High\"})          or vector(0)", "legendFormat": "High",          "refId": "A" },
+            { "expr": "sum(zap_alerts_total{job=\"zap\", risk=\"Medium\"})        or vector(0)", "legendFormat": "Medium",        "refId": "B" },
+            { "expr": "sum(zap_alerts_total{job=\"zap\", risk=\"Low\"})           or vector(0)", "legendFormat": "Low",           "refId": "C" },
+            { "expr": "sum(zap_alerts_total{job=\"zap\", risk=\"Informational\"}) or vector(0)", "legendFormat": "Informational", "refId": "D" }
+          ]
+        },
+
+
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "description": "Weekly trend of ZAP alert types per risk level across all scan targets. Each data point = one Sunday scan run. Downward trend in High/Medium = effective remediation. Informational alerts are expected and do not indicate risk.",
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 8 } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "High" },          "properties": [{ "id": "color", "value": { "fixedColor": "red",    "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Medium" },        "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Low" },           "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Informational" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue",   "mode": "fixed" } }] }
+            ]
+          },
+          "gridPos": { "h": 7, "w": 18, "x": 6, "y": 35 },
+          "id": 16,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "ZAP Findings — Trend Over Time",
+          "type": "timeseries",
+          "targets": [
+            { "expr": "sum by (risk) (zap_alerts_total{job=\"zap\", risk=\"High\"})",          "legendFormat": "High",          "refId": "A" },
+            { "expr": "sum by (risk) (zap_alerts_total{job=\"zap\", risk=\"Medium\"})",        "legendFormat": "Medium",        "refId": "B" },
+            { "expr": "sum by (risk) (zap_alerts_total{job=\"zap\", risk=\"Low\"})",           "legendFormat": "Low",           "refId": "C" },
+            { "expr": "sum by (risk) (zap_alerts_total{job=\"zap\", risk=\"Informational\"})", "legendFormat": "Informational", "refId": "D" }
+          ]
+        },
+
+        {
+          "datasource": { "type": "prometheus", "uid": "$datasource" },
+          "description": "Per-target breakdown of ZAP findings. Alert Types = distinct vulnerability patterns found. Instances = total occurrences across all URLs on that target. Review the linked HTML report for full details including affected URL, evidence, and remediation guidance.",
+          "fieldConfig": {
+            "defaults": { "custom": { "align": "left", "displayMode": "auto", "minWidth": 80 } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "Target" }, "properties": [{ "id": "custom.width", "value": 160 }] },
+              { "matcher": { "id": "byName", "options": "Risk" },   "properties": [{ "id": "custom.width", "value": 130 }] },
+              { "matcher": { "id": "byName", "options": "Alert Types" }, "properties": [
+                { "id": "custom.width", "value": 110 },
+                { "id": "color", "value": { "mode": "thresholds" } },
+                { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] } },
+                { "id": "custom.displayMode", "value": "color-background" }
+              ]},
+              { "matcher": { "id": "byName", "options": "Instances" }, "properties": [{ "id": "custom.width", "value": 100 }] }
+            ]
+          },
+          "gridPos": { "h": 8, "w": 14, "x": 0, "y": 42 },
+          "id": 17,
+          "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Alert Types" }] },
+          "title": "ZAP Findings by Target & Risk Level",
+          "type": "table",
+          "targets": [
+            { "expr": "zap_alerts_total{job=\"zap\"} or vector(0)",          "legendFormat": "", "refId": "A", "instant": true, "format": "table" },
+            { "expr": "zap_alert_instances_total{job=\"zap\"} or vector(0)", "legendFormat": "", "refId": "B", "instant": true, "format": "table" }
+          ],
+          "transformations": [
+            { "id": "merge", "options": {} },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": { "target": "Target", "risk": "Risk", "Value #A": "Alert Types", "Value #B": "Instances" },
+                "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true }
+              }
+            }
+          ]
+        },
+
+        {
+          "gridPos": { "h": 8, "w": 10, "x": 14, "y": 42 },
+          "id": 18,
+          "options": {
+            "content": "### ZAP Web App Reports\n\nBrowse all ZAP scan reports:\n\n**[ZAP Reports Directory ↗](https://{{ .Values.reportHostname }}{{ if .Values.reportPort }}:{{ .Values.reportPort }}{{ end }}/security/)**\n\nOne folder per configured scan target. Each folder contains dated `.html` (human-readable findings with remediation guidance) and `.json` (metrics export) files.\n\nScan type: `{{ .Values.zapScan.scanType }}`  \nSchedule: every Sunday 02:00 UTC",
+            "mode": "markdown"
+          },
+          "title": "ZAP Report Links",
+          "type": "text"
+        },
+
+        {
+          "collapsed": true,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+          "id": 19,
+          "title": "Scan Schedule & Coverage — expand for details",
+          "type": "row",
+          "panels": [
+            {
+              "gridPos": { "h": 22, "w": 24, "x": 0, "y": 51 },
+              "id": 20,
+              "options": {
+                "content": "## Automated Scan Coverage\n\n| Scan Type | Tool | Scope | Schedule | Evidence Type |\n|---|---|---|---|---|\n| Container Image CVE | Trivy Operator | All namespaces — cluster-wide | Continuous (event-driven) | VulnerabilityReport CRDs, Prometheus metrics |\n| CIS K8s Benchmark | kube-bench v0.15.0 | RKE2 control-plane node | Weekly — Sunday 03:00 UTC | TXT + JSON report, Pushgateway metrics |\n| Web Application Scan | OWASP ZAP (baseline) | All URLs in `scanTargets` | Weekly — Sunday 02:00 UTC | HTML + JSON reports on report server |\n\n---\n\n### Manual Scan Triggers\n\nTo run a scan immediately without waiting for Sunday:\n\n```\n# List all scan CronJobs (use output to find ZAP CronJob names)\nkubectl get cronjobs -n glerp-monitoring --request-timeout=5s\n\n# Trigger kube-bench immediately\nkubectl create job kube-bench-manual \\\n  --from=cronjob/glerp-monitoring-kube-bench \\\n  -n glerp-monitoring --request-timeout=10s\n\n# Trigger ZAP for a specific target (replace <target> with the scanTarget name)\nkubectl create job zap-manual-<target> \\\n  --from=cronjob/glerp-monitoring-zap-<target> \\\n  -n glerp-monitoring --request-timeout=10s\n\n# Watch job completion\nkubectl get jobs -n glerp-monitoring --request-timeout=30s\n```\n\n---\n\n### Adding a New GLerp Customer Site\n\n**ZAP web app scan** — ZAP needs an explicit URL to probe. Add the site's public URL to `scanTargets` in `values.yaml` and run `helm upgrade`. A new ZAP CronJob is created automatically for that URL. Example:\n```\nscanTargets:\n  - name: my-customer\n    url: \"https://my-customer.greenllama.tech\"\n```\n\n**Trivy image scanning** — no action needed. Trivy already scans every namespace cluster-wide. New workloads in any namespace are picked up automatically when their pods start.\n\n**Private GHCR images (Trivy only)** — Trivy needs credentials to read image manifests from `ghcr.io/green-llama`. Label the namespace so ESO automatically distributes the pull secret:\n```\nkubectl label namespace <ns> glerp.io/private-registry=true\n```\nTrivy does **not** pull the full image on every scan. It reads the image manifest once to get layer digests, downloads only new or uncached layers to the trivy-server PVC, then scans from cache. Without this label, private images in that namespace fail to scan with an auth error. ZAP and kube-bench do not use this secret.\n\n---\n\n### Scan Reports\nBrowse all reports: [{{ .Values.reportHostname }}{{ if .Values.reportPort }}:{{ .Values.reportPort }}{{ end }}/security/](https://{{ .Values.reportHostname }}{{ if .Values.reportPort }}:{{ .Values.reportPort }}{{ end }}/security/)\n\n### SOC2 Evidence Trail\n- **CC6.6** — Vulnerability scanning: Trivy (continuous) + ZAP (weekly)\n- **CC6.1 / CC6.6** — Infrastructure hardening: kube-bench CIS RKE2 1.7\n- **CC7.1** — Detection of security events: Grafana alerts on metric thresholds\n- Reports retained for **90 days** on the shared PVC",
+                "mode": "markdown"
+              },
+              "title": "Scan Schedule, Scope & SOC2 Mapping",
+              "type": "text"
+            }
+          ]
+        }
+
+      ],
+      "refresh": "5m",
+      "schemaVersion": 36,
+      "style": "dark",
+      "tags": ["security", "cis", "soc2", "trivy", "kube-bench", "zap", "glerp"],
+      "templating": {
+        "list": [
+          {
+            "hide": 2,
+            "includeAll": false,
+            "name": "vm_datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "GLerp.*VictoriaMetrics",
+            "type": "datasource"
+          },
+          {
+            "current": {
+              "selected": true,
+              "text": "Prometheus",
+              "value": "prometheus"
+            },
+            "hide": 0,
+            "includeAll": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "^Prometheus$",
+            "type": "datasource"
+          }
+        ]
+      },
+      "time": { "from": "now-7d", "to": "now" },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "GLerp Security — CIS/SOC2 Compliance",
+      "uid": "glerp-sec-audit-cis",
+      "version": 4
+    }
+{{- end }}

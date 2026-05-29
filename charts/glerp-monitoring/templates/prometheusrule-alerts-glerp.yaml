@@ -1,0 +1,85 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-glerp-alerts
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  groups:
+    - name: glerp.uptime
+      rules:
+        # ── Complete outage — ISP healthy ──────────────────────────────────────
+        - alert: GLerpSiteDown
+          expr: |
+            probe_success{job="glerp-sites-basic"} == 0
+            and on()
+            (avg(probe_success{job="internet-connectivity"}) >= {{ .Values.alerts.ispFailureThreshold }})
+          for: {{ .Values.alerts.siteDownMinutes }}m
+          labels:
+            severity: critical
+            alert_type: application
+            namespace: {{ .Values.namespace }}
+          annotations:
+            summary: "GLerp site DOWN: {{ "{{" }} $labels.site {{ "}}" }}"
+            description: >
+              The GLerp site {{ "{{" }} $labels.site {{ "}}" }} ({{ "{{" }} $labels.instance {{ "}}" }})
+              has not responded to HTTP probes for {{ .Values.alerts.siteDownMinutes }} minutes.
+              ISP connectivity is healthy — this is an application-level failure.
+              Check pod status in namespace {{ "{{" }} $labels.site {{ "}}" }}.
+
+        # ── Degraded — site responds but login page is malformed ───────────────
+        - alert: GLerpSiteDegraded
+          expr: |
+            probe_success{job="glerp-sites-basic"} == 1
+            and on(site)
+            (probe_success{job="glerp-sites-login"} == 0)
+            and on()
+            (avg(probe_success{job="internet-connectivity"}) >= {{ .Values.alerts.ispFailureThreshold }})
+          for: {{ .Values.alerts.siteDegradedMinutes }}m
+          labels:
+            severity: warning
+            alert_type: application_degraded
+            namespace: {{ .Values.namespace }}
+          annotations:
+            summary: "GLerp site DEGRADED: {{ "{{" }} $labels.site {{ "}}" }}"
+            description: >
+              The GLerp site {{ "{{" }} $labels.site {{ "}}" }} is accepting HTTP connections
+              but the login page content check is failing — the rendered HTML is missing
+              expected Frappe markers. Backend workers (gunicorn) are likely down or overloaded.
+              Check worker logs in namespace {{ "{{" }} $labels.site {{ "}}" }}.
+
+        # ── Complete outage — ISP may be down ──────────────────────────────────
+        - alert: GLerpSiteDownISPSuspected
+          expr: |
+            probe_success{job="glerp-sites-basic"} == 0
+            and on()
+            (avg(probe_success{job="internet-connectivity"}) < {{ .Values.alerts.ispFailureThreshold }})
+          for: {{ .Values.alerts.siteDownMinutes }}m
+          labels:
+            severity: warning
+            alert_type: isp_suspected
+            namespace: {{ .Values.namespace }}
+          annotations:
+            summary: "GLerp site DOWN (ISP outage suspected): {{ "{{" }} $labels.site {{ "}}" }}"
+            description: >
+              The GLerp site {{ "{{" }} $labels.site {{ "}}" }} is not responding AND the majority
+              of internet connectivity probes are also failing. This is most likely an ISP outage.
+              Check ISPConnectivityLost alert for confirmation.
+
+        # ── TLS certificate expiry warning ─────────────────────────────────────
+        - alert: GLerpSiteCertExpiringSoon
+          expr: |
+            (probe_ssl_earliest_cert_expiry{job="glerp-sites-basic"} - time()) / 86400 < 30
+          for: 1h
+          labels:
+            severity: warning
+            alert_type: tls
+            namespace: {{ .Values.namespace }}
+          annotations:
+            summary: "TLS cert expiring in < 30 days: {{ "{{" }} $labels.site {{ "}}" }}"
+            description: >
+              The TLS certificate for {{ "{{" }} $labels.instance {{ "}}" }} expires in
+              {{ "{{" }} $value | printf "%.0f" {{ "}}" }} days. Renew it before it expires to
+              avoid site downtime.

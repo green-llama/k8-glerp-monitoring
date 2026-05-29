@@ -1,0 +1,72 @@
+{{- if .Values.reports.cleanup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "glerp-monitoring.fullname" . }}-report-cleanup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: report-cleanup
+spec:
+  schedule: {{ .Values.reports.cleanup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "glerp-monitoring.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: report-cleanup
+        spec:
+          restartPolicy: Never
+          priorityClassName: {{ .Values.scanPriorityClassName }}
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+          containers:
+            - name: cleanup
+              image: busybox
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  RETENTION={{ .Values.reports.retentionDays }}
+                  echo "=== Report cleanup: $(date) | retention=${RETENTION}d ==="
+
+                  BEFORE=$(find /reports -type f | wc -l)
+                  echo "Files before: ${BEFORE}"
+
+                  echo "--- Deleting files older than ${RETENTION} days ---"
+                  find /reports -type f -mtime +${RETENTION} -print -delete
+
+                  echo "--- Removing empty directories ---"
+                  find /reports -mindepth 1 -type d -empty -delete
+
+                  AFTER=$(find /reports -type f | wc -l)
+                  DELETED=$((BEFORE - AFTER))
+                  echo "Deleted: ${DELETED} files | Remaining: ${AFTER} files"
+                  echo "=== Cleanup complete ==="
+              resources:
+                requests:
+                  cpu: "10m"
+                  memory: "16Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "32Mi"
+              volumeMounts:
+                - name: reports
+                  mountPath: /reports
+          volumes:
+            - name: reports
+              persistentVolumeClaim:
+                claimName: {{ include "glerp-monitoring.fullname" . }}-reports
+{{- end }}

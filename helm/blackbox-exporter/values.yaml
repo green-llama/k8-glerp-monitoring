@@ -1,0 +1,111 @@
+# Blackbox Exporter values for GLerp monitoring.
+# Deployed into cattle-monitoring-system alongside Rancher Monitoring.
+# No cluster-specific values live here — see ../../cluster-values.yaml.
+
+image:
+  tag: v0.25.0
+
+# Expose only inside the cluster — no external access needed.
+service:
+  type: ClusterIP
+  port: 9115
+
+# ServiceMonitor so Rancher Monitoring's Prometheus scrapes this exporter.
+serviceMonitor:
+  enabled: true
+  # Must match the namespace where Rancher Monitoring's Prometheus looks for ServiceMonitors.
+  # Rancher's default is to watch all namespaces, so this is fine.
+  namespace: cattle-monitoring-system
+  interval: 30s
+  scrapeTimeout: 15s
+
+# Resource limits — blackbox exporter is lightweight.
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# Security context — ICMP probes need NET_RAW. If your cluster PSA policy blocks this,
+# fall back to TCP probes for ISP checks (adjust internet-probes.yaml accordingly).
+podSecurityContext:
+  sysctls:
+    - name: net.ipv4.ping_group_range
+      value: "0 2147483647"
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  allowPrivilegeEscalation: false
+  capabilities:
+    add:
+      - NET_RAW
+
+# ─── Probe Modules ────────────────────────────────────────────────────────────
+config:
+  modules:
+
+    # ── Tier 1: Basic HTTPS reachability (fast, no body check) ────────────────
+    http_2xx:
+      prober: http
+      timeout: 10s
+      http:
+        valid_status_codes: [200, 301, 302]
+        method: GET
+        follow_redirects: true
+        preferred_ip_protocol: ip4
+        tls_config:
+          insecure_skip_verify: false
+
+    # ── Tier 2: ERPNext v16 login page content validation ────────────────────
+    # Checks that the login page is fully rendered, not a stub/error page.
+    # ERPNext/Frappe v16 login page at /login contains these markers when healthy:
+    #   - 'frappe'             — JS namespace injected on every Frappe page
+    #   - '<form'              — the login form is present in the DOM
+    #   - 'name="login"'      — the email/username input field is rendered
+    # If Nginx is up but gunicorn workers are down, the response is a small Nginx
+    # error stub or an empty body — none of these regexes will match it.
+    http_glerp_login:
+      prober: http
+      timeout: 10s
+      http:
+        valid_status_codes: [200]
+        method: GET
+        follow_redirects: true
+        preferred_ip_protocol: ip4
+        fail_if_not_matches_regexp:
+          - 'frappe'
+          - '<form'
+          - 'name="login"'
+        fail_if_header_not_matches:
+          - header: Content-Type
+            regexp: 'text/html'
+        tls_config:
+          insecure_skip_verify: false
+
+    # ── Internal worker health (Frappe /api/method/ping) ─────────────────────
+    # Quick JSON ping to internal service — bypasses Nginx/TLS.
+    # Used for diagnostics only; NOT the canonical SLA signal.
+    http_2xx_internal:
+      prober: http
+      timeout: 5s
+      http:
+        valid_status_codes: [200]
+        method: GET
+        follow_redirects: false
+        preferred_ip_protocol: ip4
+        fail_if_not_matches_regexp:
+          - '"message"'
+
+    # ── Internet / ISP connectivity check ─────────────────────────────────────
+    http_internet:
+      prober: http
+      timeout: 10s
+      http:
+        valid_status_codes: [200, 301, 302]
+        method: GET
+        follow_redirects: true
+        preferred_ip_protocol: ip4
+        # No body checks — we only care that the external internet is reachable.

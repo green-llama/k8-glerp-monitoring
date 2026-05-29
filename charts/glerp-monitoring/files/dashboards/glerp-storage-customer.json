@@ -1,0 +1,1018 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "description": "Per-customer storage usage vs. contractual allotment for MinIO object storage and Longhorn block storage.",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "Cluster Overview",
+      "url": "/d/glerp-storage-fleet",
+      "type": "link",
+      "icon": "external link"
+    },
+    {
+      "title": "Namespace Breakdown",
+      "url": "/d/glerp-storage-namespaces",
+      "type": "link",
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "description": "Customer pictures, documents, and uploaded files stored in MinIO S3-compatible object storage. Backed by DirectPV direct-attached NVMe drives.",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "title": "MinIO Object Storage",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "description": "Total bytes stored in this customer's MinIO object storage tenant. MinIO holds all customer-facing business files: purchase orders (PDFs, scans), sales invoices, delivery notes, supplier documents, expense receipts, product images, payroll documents, email attachments, and any files uploaded through the GLerp document management interface. This number grows with every file upload by staff or automated processes.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(minio_cluster_usage_total_bytes{namespace=\"$namespace\"})",
+          "legendFormat": "MinIO Used",
+          "instant": true
+        }
+      ],
+      "title": "MinIO Used",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#2B5B6C",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "description": "The effective storage quota for this customer's MinIO tenant — the total capacity available for business file uploads. Backed by DirectPV direct-attached NVMe drives. When MinIO Used approaches this limit, new file uploads will begin failing across all GLerp document types. Contact the infrastructure team to expand the MinIO pool before reaching 95% utilization.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
+          "legendFormat": "MinIO Usable Capacity",
+          "instant": true
+        }
+      ],
+      "title": "MinIO Usable Capacity (Quota)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f5a623",
+                "value": 0.8
+              },
+              {
+                "color": "#e02f44",
+                "value": 0.95
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "description": "Percentage of the customer's MinIO quota currently consumed by uploaded business files. Yellow warning fires at 80% — begin planning capacity expansion. Red critical fires at 95% — immediate action required to prevent upload failures that will block document creation across all GLerp modules.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(minio_cluster_usage_total_bytes{namespace=\"$namespace\"}) / sum(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
+          "legendFormat": "MinIO % Used",
+          "instant": true
+        }
+      ],
+      "title": "MinIO % Used",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#77C5D5",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "description": "Total number of individual files (objects) stored in this MinIO tenant across all S3 buckets. Each uploaded invoice PDF, product image, expense receipt, purchase order scan, or email attachment counts as one object. A rapidly increasing count may indicate automated integrations pushing many files, document versioning generating duplicates, or backup jobs storing incremental snapshots.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (namespace)(minio_cluster_usage_object_total{namespace=\"$namespace\"})",
+          "legendFormat": "Objects",
+          "instant": true
+        }
+      ],
+      "title": "MinIO Object Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum(minio_cluster_usage_total_bytes{namespace=\"$namespace\"})",
+          "legendFormat": "MinIO Used",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
+          "legendFormat": "MinIO Usable Capacity",
+          "refId": "B"
+        }
+      ],
+      "title": "MinIO Usage Trend (90 days)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "description": "Customer ERP database (MariaDB). Holds all transactional data: orders, invoices, customers, and accounting records. Storage class: longhorn-crypto-mariadb-rwo (ReadWriteOnce encrypted block storage).",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "title": "Longhorn MariaDB Storage",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Actual bytes written to the MariaDB database volume. MariaDB is the core of GLerp — it stores every business record: sales and purchase orders, invoices, payments, journal entries, chart of accounts, customer and supplier master data, stock movements and valuation, manufacturing BOMs, HR records, leave allocations, payroll slips, and all system configuration. Storage grows with each transaction, report run, or configuration change. Unusual growth may indicate large binary attachments stored directly in the database, long audit trail retention, or high transaction volume. Storage class: longhorn-crypto-mariadb-rwo.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 15
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc=~\".*mariadb.*\"})",
+          "legendFormat": "MariaDB Used",
+          "instant": true
+        }
+      ],
+      "title": "MariaDB Used",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total storage provisioned for the MariaDB PVC.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#2B5B6C",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 15
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=\"$namespace\", persistentvolumeclaim=~\".*mariadb.*\"})",
+          "legendFormat": "MariaDB Provisioned",
+          "instant": true
+        }
+      ],
+      "title": "MariaDB Provisioned",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Percentage of provisioned MariaDB storage currently in use.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f5a623",
+                "value": 0.8
+              },
+              {
+                "color": "#e02f44",
+                "value": 0.95
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 15
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc=~\".*mariadb.*\"}) / sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=\"$namespace\", persistentvolumeclaim=~\".*mariadb.*\"})",
+          "legendFormat": "MariaDB % Used",
+          "instant": true
+        }
+      ],
+      "title": "MariaDB % Used",
+      "type": "gauge"
+    },
+    {
+      "collapsed": false,
+      "description": "Per-site GLerp filesystem storage: site configuration, application data, and local file staging. Client documents are offloaded to MinIO via DFP S3 Storage. Storage class: longhorn-crypto-rwm (ReadWriteMany encrypted block storage).",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "title": "Longhorn Block Storage",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Actual bytes written to the GLerp filesystem volume. This RWX (ReadWriteMany) Longhorn volume holds everything outside the database: site configuration files, installed custom apps and their assets, print format templates, letterhead images, report definitions exported as files, and the ERPNext public/private file storage tree. ERPNext natively stores file attachments here, however GLerp is configured with DFP S3 Storage — any client documents saved to Home or Home/Attachments (both private and public) are automatically offloaded to the customer's MinIO tenant rather than written to this volume. As a result, this volume grows primarily from system and application data rather than client document uploads; client files appear in the MinIO usage above. Unusual growth on this volume typically indicates custom app installations, large print format assets, or system-generated files not covered by the S3 offload policy. Storage class: longhorn-crypto-rwm.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 29
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"})",
+          "legendFormat": "Block Used",
+          "instant": true
+        }
+      ],
+      "title": "Block Storage Used",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total storage provisioned for the GLerp filesystem PVC.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#2B5B6C",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 29
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=\"$namespace\", persistentvolumeclaim!~\".*mariadb.*\"})",
+          "legendFormat": "Block Provisioned",
+          "instant": true
+        }
+      ],
+      "title": "Block Storage Provisioned",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Percentage of provisioned block storage currently in use by the GLerp filesystem.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f5a623",
+                "value": 0.8
+              },
+              {
+                "color": "#e02f44",
+                "value": 0.95
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 29
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}) / sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=\"$namespace\", persistentvolumeclaim!~\".*mariadb.*\"})",
+          "legendFormat": "Block % Used",
+          "instant": true
+        }
+      ],
+      "title": "Block Storage % Used",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "90-day actual vs provisioned usage for the MariaDB database PVC (longhorn-crypto-mariadb-rwo).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "expr": "longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc=~\".*mariadb.*\"}",
+          "legendFormat": "{{pvc}} (actual)",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "expr": "longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\", pvc=~\".*mariadb.*\"}",
+          "legendFormat": "{{pvc}} (provisioned)",
+          "refId": "B"
+        }
+      ],
+      "title": "MariaDB Storage Trend (90 days)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "90-day actual vs provisioned usage for the GLerp filesystem PVC (longhorn-crypto-rwm).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "expr": "longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}",
+          "legendFormat": "{{pvc}} (actual)",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "expr": "longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}",
+          "legendFormat": "{{pvc}} (provisioned)",
+          "refId": "B"
+        }
+      ],
+      "title": "Block Storage Trend (90 days)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "title": "PVC Detail",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Actual Used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Available"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "% Used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#27B093",
+                      "value": null
+                    },
+                    {
+                      "color": "#f5a623",
+                      "value": 0.8
+                    },
+                    {
+                      "color": "#e02f44",
+                      "value": 0.95
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "% Used",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\"}",
+          "instant": true,
+          "format": "table",
+          "refId": "ActualUsed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\"} - longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\"}",
+          "instant": true,
+          "format": "table",
+          "refId": "Available"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\"} / longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\"}",
+          "instant": true,
+          "format": "table",
+          "refId": "PctUsed"
+        }
+      ],
+      "title": "PVC Breakdown (Longhorn)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "pvc": "PVC Name",
+              "Value #ActualUsed": "Actual Used",
+              "Value #Available": "Available",
+              "Value #PctUsed": "% Used"
+            },
+            "excludeByName": {
+              "Time": true,
+              "pvc_namespace": true,
+              "node": true,
+              "volume": true,
+              "instance": true,
+              "job": true,
+              "namespace": true,
+              "prometheus": true,
+              "prometheus_replica": true,
+              "container": true,
+              "endpoint": true,
+              "pod": true
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": [
+    "storage",
+    "glerp",
+    "customer"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Prometheus"
+      },
+      {
+        "current": {},
+        "hide": 2,
+        "includeAll": false,
+        "name": "vm_datasource",
+        "options": [],
+        "query": "prometheus",
+        "regex": "GLerp.*VictoriaMetrics",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Long-term (VictoriaMetrics)"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(glerp:longhorn_namespace_usage_bytes{claimnamespace!=\"\"}, claimnamespace)",
+        "hide": 0,
+        "includeAll": false,
+        "name": "namespace",
+        "query": {
+          "query": "label_values(glerp:longhorn_namespace_usage_bytes{claimnamespace!=\"\"}, claimnamespace)",
+          "refId": "namespace"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query",
+        "label": "Customer Namespace"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GLerp Storage — Customer Report",
+  "uid": "glerp-storage-customer",
+  "version": 1
+}

@@ -1,0 +1,27 @@
+{{- if .Values.longhorn.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-longhorn
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.longhorn.namespace }}
+  selector:
+    matchLabels:
+      app: longhorn-manager
+  endpoints:
+    - port: manager
+      path: /metrics
+      interval: {{ .Values.longhorn.serviceMonitor.scrapeInterval }}
+      scrapeTimeout: {{ .Values.longhorn.serviceMonitor.scrapeTimeout }}
+      relabelings:
+        - sourceLabels: [__address__]
+          targetLabel: __address__
+        - targetLabel: job
+          replacement: longhorn-manager
+{{- end }}

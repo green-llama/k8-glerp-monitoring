@@ -1,0 +1,468 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "#1F60C4",
+        "limit": 100,
+        "name": "Maintenance Windows",
+        "showIn": 0,
+        "tags": ["maintenance"],
+        "type": "tags"
+      }
+    ]
+  },
+  "description": "Real-time status of all GLerp sites and ISP connectivity",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "SLA Compliance Report",
+      "url": "/d/glerp-sla-compliance",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "Internet Connectivity",
+      "url": "/d/glerp-internet",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "Customer SLA Report",
+      "url": "/d/glerp-customer-sla",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    }__MAINTENANCE_ADMIN_LINK__
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "ISP / Internet Status",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "ISP Connectivity",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "avg(probe_success{job=\"internet-connectivity\"})",
+          "legendFormat": "ISP",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 4, "w": 18, "x": 6, "y": 1 },
+      "id": 3,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "ISP Probe Success Rate (1 hour)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "probe_success{job=\"internet-connectivity\"}",
+          "legendFormat": "{{ instance }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 10,
+      "title": "GLerp Site Status — Current",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Current health state of each site, evaluated every 30 seconds:\n• UP (green, value 2) — basic HTTPS probe passes AND login-page content check passes\n• DEGRADED (orange, value 1) — HTTPS responds but login page is malformed (Frappe workers likely overloaded or crashed; Nginx is up but the app is broken)\n• DOWN (red, value 0) — site is not reachable at all\n\nNo Data shown here usually means the same site has more than one monitoring probe target active (e.g., two Services in the namespace both have the glerp-monitoring=enabled label). Fix: ensure exactly one Service per namespace has that label — typically the dedicated extraObjects monitoring-discovery Service. Remove the label from any other Service in the namespace.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "DOWN",     "color": "red"    },
+                "1": { "text": "DEGRADED", "color": "orange" },
+                "2": { "text": "UP",       "color": "green"  }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "green",  "value": 2 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "title": "Site Health State",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "glerp:site_health_state{site=~\"$site\"}",
+          "legendFormat": "{{ site }}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "id": 20,
+      "title": "Site Uptime — Last 30 Days",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "30-day uptime % per site, calculated from VictoriaMetrics (90-day retention). Uses the login-page content probe — the canonical SLA signal that detects both complete outages and degraded application states.\n\nTarget: 99.5% (≤ 3h 36m downtime per month).\nThresholds: red &lt;98%, orange 98–99.5%, green ≥99.5%.\n\nIf you see two entries for the same site (one correct, one showing 0%): a second Service in the namespace has the glerp-monitoring=enabled label but no valid public-url annotation. It probes a garbage URL and always fails. Fix: remove the label from any Service that does not have the glerp-monitoring/public-url annotation set correctly. Only one Service per namespace should have the label.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "min": 95,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null  },
+              { "color": "orange", "value": 98.0  },
+              { "color": "green",  "value": 99.5  }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
+      "id": 21,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "title": "30-Day Uptime % per Site (raw)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+      "targets": [
+        {
+          "expr": "avg_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[30d]) * 100",
+          "legendFormat": "{{ site }}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+      "description": "30-day uptime % with maintenance windows excluded from the calculation. During a defined maintenance window the downtime does not count against SLA.\n\nFormula: (probe_success up-samples) / (total samples − maintenance samples) × 100\n\nWhen no maintenance windows are defined this equals the raw figure. Maintenance windows are defined via the GLerp Maintenance Admin tool.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "percent",
+          "min": 95,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null  },
+              { "color": "orange", "value": 98.0  },
+              { "color": "green",  "value": 99.5  }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 25 },
+      "id": 22,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "title": "30-Day Uptime % per Site (maintenance-adjusted)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "clamp_max(\n  (\n    sum by(site) (sum_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[30d]))\n    + (\n      sum by(site) (sum_over_time(glerp_maintenance_excused_failures{site=~\"$site\"}[30d]))\n      or\n      sum by(site) (sum_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[30d]) * 0)\n    )\n  ) / sum by(site) (count_over_time(probe_success{job=\"glerp-sites-login\", site=~\"$site\"}[30d])) * 100,\n  100\n)",
+          "legendFormat": "{{ site }}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
+      "id": 30,
+      "title": "Recent Probe History (6 hours)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
+      "id": 31,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "Login Probe Success",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "probe_success{job=\"glerp-sites-login\", site=~\"$site\"}",
+          "legendFormat": "{{ site }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 },
+      "id": 50,
+      "title": "Incident History",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Green = UP, Red = DOWN. Each row is one site. Drag the time range to investigate specific incidents.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "DOWN", "color": "red" },
+                "1": { "text": "UP",   "color": "green" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 43 },
+      "id": 51,
+      "options": {
+        "mergeValues": true,
+        "showValue": "auto",
+        "fillOpacity": 90,
+        "rowHeight": 0.9,
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "title": "Site Up/Down Timeline",
+      "type": "state-timeline",
+      "targets": [
+        {
+          "expr": "probe_success{job=\"glerp-sites-login\", site=~\"$site\"}",
+          "legendFormat": "{{ site }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "id": 60,
+      "title": "Response Time",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Login probe round-trip time per site. Sustained increases often precede outages.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms",
+          "custom": { "lineWidth": 1, "fillOpacity": 5 }
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 54 },
+      "id": 61,
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
+      },
+      "title": "Login Probe Response Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "probe_duration_seconds{job=\"glerp-sites-login\", site=~\"$site\"} * 1000",
+          "legendFormat": "{{ site }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 62 },
+      "id": 70,
+      "title": "TLS Certificate Expiry",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Days until the site's SSL certificate expires. Red = <14 days, Yellow = <30 days.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "d",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 14 },
+              { "color": "green",  "value": 30 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 63 },
+      "id": 71,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "title": "TLS Certificate Expiry (days remaining)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "(probe_ssl_earliest_cert_expiry{job=\"glerp-sites-basic\", site=~\"$site\"} - time()) / 86400",
+          "legendFormat": "{{ site }}",
+          "refId": "A",
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 38,
+  "tags": ["glerp", "uptime", "monitoring"],
+  "templating": {
+    "list": [
+      {
+        "hide": 2,
+        "includeAll": false,
+        "name": "vm_datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "GLerp.*VictoriaMetrics",
+        "type": "datasource"
+      },
+      {
+        "current": {"selected": true, "text": "Prometheus", "value": "prometheus"},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "^Prometheus$",
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(probe_success{job=\"glerp-sites-login\"}, site)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "label": "Site",
+        "multi": false,
+        "name": "site",
+        "options": [],
+        "query": {
+          "query": "label_values(probe_success{job=\"glerp-sites-login\"}, site)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GLerp — Uptime Overview",
+  "uid": "glerp-uptime-overview",
+  "version": 1
+}

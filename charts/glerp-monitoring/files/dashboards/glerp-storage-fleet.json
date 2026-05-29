@@ -1,0 +1,1053 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "description": "Cluster-wide storage utilization across all Longhorn nodes, MinIO tenants, DirectPV drives, and node filesystems.",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "title": "Customer Storage Report",
+      "url": "/d/glerp-storage-customer",
+      "type": "link",
+      "icon": "external link"
+    },
+    {
+      "title": "Namespace Breakdown",
+      "url": "/d/glerp-storage-namespaces",
+      "type": "link",
+      "icon": "external link"
+    },
+    {
+      "title": "Capacity Planning",
+      "url": "/d/glerp-storage-growth",
+      "type": "link",
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "title": "Longhorn Cluster Summary",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "glerp:longhorn_cluster_capacity_bytes",
+          "legendFormat": "Total Capacity",
+          "instant": true
+        }
+      ],
+      "title": "Longhorn Total Capacity",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f5a623",
+                "value": 70
+              },
+              {
+                "color": "#e02f44",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "glerp:longhorn_cluster_usage_bytes",
+          "legendFormat": "Used",
+          "instant": true
+        }
+      ],
+      "title": "Longhorn Used",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "glerp:longhorn_cluster_capacity_bytes - glerp:longhorn_cluster_usage_bytes",
+          "legendFormat": "Free",
+          "instant": true
+        }
+      ],
+      "title": "Longhorn Free",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "90-day trend of Longhorn storage usage and capacity per node. Solid lines show actual usage; dashed lines show node capacity. Watch for any node where used is closing the gap to capacity.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*\u2014 Capacity"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (node)(longhorn_node_storage_usage_bytes)",
+          "legendFormat": "{{ node }} \u2014 Used",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (node)(longhorn_node_storage_capacity_bytes)",
+          "legendFormat": "{{ node }} \u2014 Capacity",
+          "refId": "B"
+        }
+      ],
+      "title": "Longhorn Node Usage Trend (90 days)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "description": "Cluster-wide MinIO object storage totals. Each customer namespace runs its own MinIO tenant backed by DirectPV direct-attached drives.",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "title": "MinIO Cluster Summary",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#2B5B6C",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(minio_cluster_capacity_usable_total_bytes)",
+          "legendFormat": "MinIO Total Usable",
+          "instant": true
+        }
+      ],
+      "title": "MinIO Total Usable",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f5a623",
+                "value": 70
+              },
+              {
+                "color": "#e02f44",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(minio_cluster_usage_total_bytes)",
+          "legendFormat": "MinIO Total Used",
+          "instant": true
+        }
+      ],
+      "title": "MinIO Total Used",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes",
+          "mappings": []
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(minio_cluster_capacity_usable_total_bytes) - sum(minio_cluster_usage_total_bytes)",
+          "legendFormat": "MinIO Total Free",
+          "instant": true
+        }
+      ],
+      "title": "MinIO Total Free",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "\u24d8 MinIO uses DirectPV as its storage backend. Each node contributes one or more directly-attached drives to the MinIO storage pool. This trend shows actual bytes written to DirectPV volumes per node over 90 days \u2014 the physical node-level view of MinIO object storage growth.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (node)(directpv_stats_bytes_used)",
+          "legendFormat": "{{ node }}",
+          "refId": "A"
+        }
+      ],
+      "title": "MinIO Node Storage Trend (90 days)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Per-node DirectPV storage. Drive Capacity = physical drive size from DirectPVDrive CRD (via kube-state-metrics custom resource state). Allocated = sum of PVC provisioned sizes. Used = actual bytes written. Free = Drive Capacity \u2212 Used (physical free space). % Used = Used / Drive Capacity.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "% Used"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#27B093",
+                      "value": null
+                    },
+                    {
+                      "color": "#f5a623",
+                      "value": 70
+                    },
+                    {
+                      "color": "#e02f44",
+                      "value": 85
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "(Drive Capacity|Allocated|Used|Free)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "% Used",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (node)(kube_customresource_directpv_drive_total_capacity_bytes)",
+          "legendFormat": "{{node}}",
+          "instant": true,
+          "format": "table",
+          "refId": "DriveCapacity"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (node)(kube_customresource_directpv_drive_allocated_capacity_bytes)",
+          "legendFormat": "{{node}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Allocated"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (node)(directpv_stats_bytes_used)",
+          "legendFormat": "{{node}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Used"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (node)(kube_customresource_directpv_drive_free_capacity_bytes)",
+          "legendFormat": "{{node}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Free"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (node)(directpv_stats_bytes_used) / sum by (node)(kube_customresource_directpv_drive_total_capacity_bytes) * 100",
+          "legendFormat": "{{node}}",
+          "instant": true,
+          "format": "table",
+          "refId": "PctUsed"
+        }
+      ],
+      "title": "MinIO Node Storage (Aggregated by Node)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "node": "Node",
+              "Value #DriveCapacity": "Drive Capacity",
+              "Value #Allocated": "Allocated",
+              "Value #Used": "Used",
+              "Value #Free": "Free",
+              "Value #PctUsed": "% Used"
+            },
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "__name__": true,
+              "instance": true,
+              "container": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "service": true,
+              "volumeID": true
+            },
+            "indexByName": {
+              "Node": 0,
+              "Drive Capacity": 1,
+              "Allocated": 2,
+              "Used": 3,
+              "Free": 4,
+              "% Used": 5
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "title": "Node Filesystems",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Physical filesystem utilization per node (excludes tmpfs, devtmpfs, overlay, squashfs, ramfs). Duplicate rows caused by Prometheus federation labels are collapsed via max() aggregation. Node column shows IP address.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Used %"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#27B093",
+                      "value": null
+                    },
+                    {
+                      "color": "#f5a623",
+                      "value": 80
+                    },
+                    {
+                      "color": "#e02f44",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "(Size|Used|Free)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Used %",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "label_replace(\n  max by (instance, mountpoint, fstype, device)(\n    node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"} > 0\n  ),\n  \"node\", \"$1\", \"instance\", \"([^:]+):[0-9]+\"\n)",
+          "legendFormat": "{{node}} {{mountpoint}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Size"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "label_replace(\n  max by (instance, mountpoint, fstype, device)(\n    node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"} - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"}\n  ),\n  \"node\", \"$1\", \"instance\", \"([^:]+):[0-9]+\"\n)",
+          "legendFormat": "{{node}} {{mountpoint}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Used"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "label_replace(\n  max by (instance, mountpoint, fstype, device)(\n    node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"}\n  ),\n  \"node\", \"$1\", \"instance\", \"([^:]+):[0-9]+\"\n)",
+          "legendFormat": "{{node}} {{mountpoint}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Free"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "label_replace(\n  max by (instance, mountpoint, fstype, device)(\n    (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"}) * 100\n  ),\n  \"node\", \"$1\", \"instance\", \"([^:]+):[0-9]+\"\n)",
+          "legendFormat": "{{node}} {{mountpoint}}",
+          "instant": true,
+          "format": "table",
+          "refId": "UsedPct"
+        }
+      ],
+      "title": "Node Filesystem Usage",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "node": "Node",
+              "mountpoint": "Mount",
+              "fstype": "FS Type",
+              "Value #Size": "Size",
+              "Value #Used": "Used",
+              "Value #Free": "Free",
+              "Value #UsedPct": "Used %"
+            },
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "__name__": true,
+              "device": true,
+              "instance": true,
+              "container": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true,
+              "prometheus_replica": true,
+              "cluster_id": true,
+              "cluster_name": true
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "90-day trend of filesystem usage percentage per node and mount point. Helps identify filesystems approaching capacity before alerts fire. Node legend shows IP address (hostname requires node_uname_info in VictoriaMetrics remoteWrite filter).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f5a623",
+                "value": 80
+              },
+              {
+                "color": "#e02f44",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "thresholdsStyle": {
+          "mode": "line+area"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "label_replace(\n  max by (instance, mountpoint)(\n    (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs|overlay|squashfs|ramfs\"}) * 100\n  ),\n  \"node\", \"$1\", \"instance\", \"([^:]+):[0-9]+\"\n)",
+          "legendFormat": "{{ node }} {{ mountpoint }}",
+          "refId": "A"
+        }
+      ],
+      "title": "Node Filesystem Usage Trend (90 days)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": [
+    "storage",
+    "glerp",
+    "cluster"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "Prometheus",
+          "value": "prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Data Source",
+        "regex": "^Prometheus$"
+      },
+      {
+        "current": {},
+        "hide": 2,
+        "includeAll": false,
+        "name": "vm_datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "GLerp.*VictoriaMetrics",
+        "type": "datasource",
+        "label": "Long-term (VictoriaMetrics)"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GLerp Storage \u2014 Cluster Overview",
+  "uid": "glerp-storage-fleet",
+  "version": 4
+}

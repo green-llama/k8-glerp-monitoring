@@ -1,0 +1,156 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "glerp-monitoring.fullname" . }}-report-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: report-server
+spec:
+  replicas: {{ .Values.reportServer.replicas }}
+  selector:
+    matchLabels:
+      {{- include "glerp-monitoring.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: report-server
+  template:
+    metadata:
+      labels:
+        {{- include "glerp-monitoring.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: report-server
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      initContainers:
+        # Step 1: create a fresh SQLite database for filebrowser settings
+        - name: fb-init
+          image: {{ .Values.reportServer.image | quote }}
+          imagePullPolicy: {{ .Values.reportServer.imagePullPolicy }}
+          args:
+            - "-d"
+            - "/db/filebrowser.db"
+            - "config"
+            - "init"
+          volumeMounts:
+            - name: fb-database
+              mountPath: /db
+        # Step 2: apply server settings and branding — stored in the database,
+        # read by the main container on startup.
+        - name: fb-config
+          image: {{ .Values.reportServer.image | quote }}
+          imagePullPolicy: {{ .Values.reportServer.imagePullPolicy }}
+          args:
+            - "-d"
+            - "/db/filebrowser.db"
+            - "config"
+            - "set"
+            - "--auth.method=noauth"
+            - "--branding.name={{ .Values.reportServer.branding.name }}"
+            - "--branding.color={{ .Values.reportServer.branding.color }}"
+            - "--branding.files=/branding"
+            - "--baseURL=/security"
+            - "--port=80"
+            - "--address=0.0.0.0"
+            - "--log=stdout"
+            - "--root=/reports"
+          volumeMounts:
+            - name: fb-database
+              mountPath: /db
+        # Step 3: create the admin user — noauth mode auto-logs in as this user;
+        # without any user in the database noauth returns 500 "resource does not exist".
+        # Password is irrelevant since authentication is disabled.
+        # The reports PVC must be mounted here: filebrowser reads root=/reports from
+        # the DB and calls os.MkdirAll(/reports) when adding a user. Without the mount,
+        # /reports doesn't exist in the scratch container and uid 1000 can't create it.
+        - name: fb-user
+          image: {{ .Values.reportServer.image | quote }}
+          imagePullPolicy: {{ .Values.reportServer.imagePullPolicy }}
+          args:
+            - "-d"
+            - "/db/filebrowser.db"
+            - "users"
+            - "add"
+            - "admin"
+            - "noauth-disabled"
+            - "--perm.admin"
+          volumeMounts:
+            - name: fb-database
+              mountPath: /db
+            - name: reports
+              mountPath: /reports
+      containers:
+        - name: filebrowser
+          image: {{ .Values.reportServer.image | quote }}
+          imagePullPolicy: {{ .Values.reportServer.imagePullPolicy }}
+          args:
+            - "-d"
+            - "/db/filebrowser.db"
+            - "--root=/reports"
+            - "--baseURL=/security"
+            - "--address=0.0.0.0"
+            - "--port=80"
+            - "--noauth"
+          ports:
+            - name: http
+              containerPort: 80
+          livenessProbe:
+            tcpSocket:
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.reportServer.resources | nindent 12 }}
+          volumeMounts:
+            - name: reports
+              mountPath: /reports
+            - name: fb-database
+              mountPath: /db
+            - name: branding
+              mountPath: /branding/img/logo.svg
+              subPath: logo.svg
+              readOnly: true
+            - name: branding
+              mountPath: /branding/custom.css
+              subPath: custom.css
+              readOnly: true
+      volumes:
+        - name: reports
+          persistentVolumeClaim:
+            claimName: {{ include "glerp-monitoring.fullname" . }}-reports
+        - name: fb-database
+          emptyDir: {}
+        - name: branding
+          configMap:
+            name: {{ include "glerp-monitoring.fullname" . }}-branding
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "glerp-monitoring.fullname" . }}-report-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: report-server
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "glerp-monitoring.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: report-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

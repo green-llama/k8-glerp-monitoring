@@ -1,0 +1,99 @@
+GLerp Monitoring v2 deployed to namespace {{ .Values.namespace }}.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED — Update Rancher Monitoring remoteWrite (one-time)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In Rancher UI → Apps → rancher-monitoring → Edit → paste into YAML:
+
+  prometheus:
+    prometheusSpec:
+      remoteWrite:
+        - url: http://{{ .Release.Name }}-victoriametrics.{{ .Values.namespace }}.svc:8428/api/v1/write
+          writeRelabelConfigs:
+            - sourceLabels: [__name__]
+              regex: "node_filesystem.*|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
+              action: keep
+      additionalScrapeConfigsSecret:
+        name: {{ .Release.Name }}-scrape-configs
+        key: additional-scrape-configs.yaml
+        namespace: {{ .Values.namespace }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED — Pre-create the SMTP secret
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  kubectl create secret generic {{ .Values.alertmanager.email.passwordSecret.name }} \
+    --namespace {{ .Values.namespace }} \
+    --from-literal={{ .Values.alertmanager.email.passwordSecret.key }}='YOUR_SMTP_PASSWORD'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPTIONAL — Telegram alerts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  kubectl create secret generic {{ .Values.alertmanager.telegram.botTokenSecret.name }} \
+    --namespace {{ .Values.namespace }} \
+    --from-literal={{ .Values.alertmanager.telegram.botTokenSecret.key }}='YOUR_BOT_TOKEN'
+
+Then set alertmanager.telegram.enabled=true and alertmanager.telegram.chatId in your values.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPTIONAL — Enable DirectPV physical drive capacity metrics (one-time)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+See README.md section "Post-Install: Enable DirectPV Physical Drive Capacity Metrics"
+for the kube-state-metrics RBAC and customResourceState configuration steps.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPTIONAL — Enable MinIO tenant metrics (per tenant, one-time)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For each customer's MinIO Tenant, add:
+  spec:
+    env:
+      - name: MINIO_PROMETHEUS_AUTH_TYPE
+        value: "public"
+
+  kubectl patch tenant <TENANT_NAME> -n <NAMESPACE> \
+    --type=json \
+    -p '[{"op":"add","path":"/spec/env/-","value":{"name":"MINIO_PROMETHEUS_AUTH_TYPE","value":"public"}}]'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPTIONAL — Enable security scanning (Trivy, kube-bench, ZAP)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Set in values:
+  trivy-operator.enabled: true
+  prometheus-pushgateway.enabled: true
+  kubeBench.enabled: true
+  zapScan.enabled: true
+  reportHostname: "security.{{ .Values.cluster.domain }}"
+  scanTargets:
+    - name: mycustomer
+      url: "https://mycustomer.{{ .Values.cluster.domain }}"
+
+See README.md for the full ESO/GHCR private registry setup if needed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Grafana Dashboards
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dashboards appear in Grafana → "{{ .Values.grafana.folderName }}" within ~60 seconds.
+
+  Uptime Overview              — /d/glerp-uptime-overview
+  SLA Compliance               — /d/glerp-sla-compliance
+  Internet Connectivity        — /d/glerp-internet
+  Customer SLA Report          — /d/glerp-customer-sla
+  Cluster Storage Overview     — /d/glerp-storage-fleet
+  Customer Storage Report      — /d/glerp-storage-customer
+  Namespace Storage Breakdown  — /d/glerp-storage-namespaces
+  Capacity Planning & Growth   — /d/glerp-storage-growth
+  Security CIS/SOC2 Compliance — /d/glerp-sec-audit-cis
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Verify targets are UP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  kubectl get servicemonitor,podmonitor -n {{ .Values.namespace }} --request-timeout=5s
+
+Check Prometheus UI → Status → Targets for longhorn, directpv, minio, and blackbox entries.

@@ -1,0 +1,65 @@
+# Recording rules for GLerp SLA compliance reporting.
+# Pre-computes uptime ratios so Grafana dashboards load quickly at report time.
+#
+# Apply with: kubectl apply -f manifests/prometheusrules/glerp-recording-rules.yaml
+# Namespace must match where Rancher's Prometheus looks for PrometheusRules.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: glerp-recording-rules
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/name: glerp-monitoring
+    # Rancher Monitoring requires this label to pick up PrometheusRule objects.
+    release: rancher-monitoring
+spec:
+  groups:
+    - name: glerp.recording.uptime
+      interval: 5m
+      rules:
+        # ── 3-state health: 2=up, 1=degraded, 0=down ─────────────────────────
+        # Used by the Grafana status grid panel for real-time site status.
+        - record: glerp:site_health_state
+          expr: |
+            (probe_success{job=~"glerp-.*-basic"} == 1) * 2
+            - on(site) group_left()
+            (
+              (probe_success{job=~"glerp-.*-basic"} == 1)
+              * on(site) group_left()
+              (probe_success{job=~"glerp-.*-login"} == 0)
+            )
+
+        # ── 30-day uptime ratio (canonical SLA signal = login-tier probe) ─────
+        # "Fully up" = login page renders correctly. Both DOWN and DEGRADED
+        # reduce this value. Used as the primary SLA compliance metric.
+        - record: glerp:site_uptime_ratio_30d
+          expr: |
+            avg_over_time(probe_success{job=~"glerp-.*-login"}[30d]) * 100
+
+        # ── 30-day degraded ratio ──────────────────────────────────────────────
+        # Site was reachable (HTTP 200) but login page was broken.
+        # Displayed as a separate band in the SLA dashboard.
+        - record: glerp:site_degraded_ratio_30d
+          expr: |
+            avg_over_time(
+              (
+                (probe_success{job=~"glerp-.*-basic"} == 1)
+                * on(site) group_left()
+                (probe_success{job=~"glerp-.*-login"} == 0)
+              )[30d:5m]
+            ) * 100
+
+        # ── 30-day downtime minutes ────────────────────────────────────────────
+        # Total minutes where the login probe failed in the last 30 days.
+        # Displayed in the SLA table for quick report generation.
+        - record: glerp:site_downtime_minutes_30d
+          expr: |
+            (1 - avg_over_time(probe_success{job=~"glerp-.*-login"}[30d])) * 43200
+
+        # ── ISP uptime ratio (30 days) ─────────────────────────────────────────
+        - record: glerp:isp_uptime_ratio_30d
+          expr: |
+            avg_over_time(
+              avg(probe_success{job="internet-connectivity"})[30d:5m]
+            ) * 100

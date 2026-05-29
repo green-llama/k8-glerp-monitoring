@@ -1,0 +1,123 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  route:
+    receiver: email-alerts
+    # Only handle alerts that carry an alert_type label — every GLerp rule sets
+    # one (application, isp, tls, …) while Rancher/Kubernetes built-in alerts
+    # do not.  Alerts without this label fall through to Rancher's default receiver.
+    matchers:
+      - name: alert_type
+        matchType: =~
+        value: ".+"
+    groupBy: [alertname, site, namespace, node, cluster]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    routes:
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: email-alerts
+        repeatInterval: 2h
+        # continue: true allows the alert to also match the messaging route below,
+        # sending to both email AND Telegram/Slack simultaneously.
+        {{- if or .Values.alertmanager.telegram.enabled .Values.alertmanager.slack.enabled }}
+        continue: true
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: messaging-critical
+        repeatInterval: 2h
+        {{- end }}
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: email-alerts
+        repeatInterval: 4h
+      - matchers:
+          - name: severity
+            value: info
+        receiver: email-alerts
+        repeatInterval: 168h
+
+  # Suppress per-site alerts when an ISP outage is confirmed.
+  # This prevents alert storms — one ISPConnectivityLost email instead of N site emails.
+  inhibitRules:
+    - sourceMatch:
+        - name: alertname
+          value: ISPConnectivityLost
+      targetMatch:
+        - name: alert_type
+          matchType: =~
+          value: "application|application_degraded|isp_suspected"
+      equal: []
+
+  receivers:
+    - name: email-alerts
+      emailConfigs:
+        - to: {{ .Values.alertmanager.email.to | quote }}
+          from: {{ .Values.alertmanager.email.from | quote }}
+          smarthost: {{ .Values.alertmanager.email.smarthost | quote }}
+          authUsername: {{ .Values.alertmanager.email.authUsername | quote }}
+          authPassword:
+            name: {{ .Values.alertmanager.email.passwordSecret.name }}
+            key: {{ .Values.alertmanager.email.passwordSecret.key }}
+          requireTLS: {{ .Values.alertmanager.email.requireTLS }}
+          sendResolved: true
+          headers:
+            - key: subject
+              value: >-
+                [GLerp {{ .Values.cluster.name }}] {{ "{{" }} .GroupLabels.alertname {{ "}}" }}
+                {{- "{{" }} if .GroupLabels.site {{ "}}" }} - {{ "{{" }} .GroupLabels.site {{ "}}" }}{{ "{{" }} end {{ "}}" }}
+          html: |
+            {{ "{{" }} range .Alerts {{ "}}" }}
+            <h3>{{ "{{" }} .Annotations.summary {{ "}}" }}</h3>
+            <p><strong>Status:</strong> {{ "{{" }} .Status {{ "}}" }}</p>
+            <p><strong>Severity:</strong> {{ "{{" }} .Labels.severity {{ "}}" }}</p>
+            <p>{{ "{{" }} .Annotations.description {{ "}}" }}</p>
+            <p><small>Started: {{ "{{" }} .StartsAt.Format "2006-01-02 15:04:05 UTC" {{ "}}" }}</small></p>
+            {{ "{{" }} end {{ "}}" }}
+
+    {{- if or .Values.alertmanager.telegram.enabled .Values.alertmanager.slack.enabled }}
+    - name: messaging-critical
+      {{- if .Values.alertmanager.telegram.enabled }}
+      telegramConfigs:
+        - chatID: {{ .Values.alertmanager.telegram.chatId }}
+          botToken:
+            name: {{ .Values.alertmanager.telegram.botTokenSecret.name }}
+            key: {{ .Values.alertmanager.telegram.botTokenSecret.key }}
+          parseMode: HTML
+          sendResolved: true
+          message: |-
+            {{ "{{" }}- if eq .Status "firing" -{{ "}}" }}🔴{{ "{{" }}- else -{{ "}}" }}✅{{ "{{" }}- end {{ "}}" }} <b>{{ "{{" }} .GroupLabels.alertname {{ "}}" }}</b>{{ "{{" }} if .GroupLabels.site {{ "}}" }} — {{ "{{" }} .GroupLabels.site {{ "}}" }}{{ "{{" }} end {{ "}}" }}
+            <b>Cluster:</b> {{ .Values.cluster.name }}
+            {{ "{{" }} range .Alerts {{ "-}}" }}
+            {{ "{{" }} .Annotations.summary {{ "}}" }}
+            {{ "{{" }} if .Annotations.description {{ "}}" }}{{ "{{" }} .Annotations.description {{ "}}" }}{{ "{{" }} end {{ "}}" }}
+            Started: {{ "{{" }} .StartsAt.Format "2006-01-02 15:04 UTC" {{ "}}" }}
+            {{ "{{" }}- end {{ "}}" }}
+      {{- end }}
+      {{- if .Values.alertmanager.slack.enabled }}
+      slackConfigs:
+        - apiURL:
+            name: {{ .Values.alertmanager.slack.webhookSecret.name }}
+            key: {{ .Values.alertmanager.slack.webhookSecret.key }}
+          channel: {{ .Values.alertmanager.slack.channel | quote }}
+          sendResolved: true
+          color: '{{ "{{" }} if eq .Status "firing" {{ "}}" }}danger{{ "{{" }} else {{ "}}" }}good{{ "{{" }} end {{ "}}" }}'
+          title: '{{ "{{" }} if eq .Status "firing" {{ "}}" }}🔴{{ "{{" }} else {{ "}}" }}✅{{ "{{" }} end {{ "}}" }} [GLerp {{ .Values.cluster.name }}] {{ "{{" }} .GroupLabels.alertname {{ "}}" }}{{ "{{" }} if .GroupLabels.site {{ "}}" }} — {{ "{{" }} .GroupLabels.site {{ "}}" }}{{ "{{" }} end {{ "}}" }}'
+          text: |-
+            {{ "{{" }} range .Alerts {{ "-}}" }}
+            *{{ "{{" }} .Annotations.summary {{ "}}" }}*
+            {{ "{{" }} if .Annotations.description {{ "}}" }}{{ "{{" }} .Annotations.description {{ "}}" }}{{ "{{" }} end {{ "}}" }}
+            Started: {{ "{{" }} .StartsAt.Format "2006-01-02 15:04 UTC" {{ "}}" }}
+            {{ "{{" }}- end {{ "}}" }}
+      {{- end }}
+    {{- end }}

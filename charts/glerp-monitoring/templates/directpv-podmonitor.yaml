@@ -1,0 +1,32 @@
+{{- if .Values.directpv.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ .Release.Name }}-directpv
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.directpv.namespace }}
+  # Targets the node-server DaemonSet pods directly — no Kubernetes Service fronts DirectPV.
+  # DirectPV exposes per-drive metrics on port 10443 (named "metrics"), not the readiness port (30443).
+  # The pod selector label is installation-specific — get it with:
+  #   kubectl get daemonset node-server -n directpv -o jsonpath='{.spec.selector.matchLabels}'
+  selector:
+    matchLabels:
+      {{ .Values.directpv.podSelectorKey }}: {{ .Values.directpv.podSelectorValue | quote }}
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.directpv.serviceMonitor.scrapeInterval }}
+      scrapeTimeout: {{ .Values.directpv.serviceMonitor.scrapeTimeout }}
+      relabelings:
+        - targetLabel: job
+          replacement: directpv
+        # Carry the node name so drive metrics can be correlated to host.
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+{{- end }}

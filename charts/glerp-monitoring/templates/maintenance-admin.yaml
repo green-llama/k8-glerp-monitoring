@@ -1,0 +1,154 @@
+{{- if .Values.maintenanceAdmin.enabled }}
+{{- /*
+Maintenance Window Admin — browser-based form for defining maintenance windows.
+Creates: glerp_maintenance_window metric in VictoriaMetrics, Grafana annotation,
+and AlertManager silence — all in one form submission.
+
+One-time setup (ops team):
+  1. Create a Grafana service account token (Editor role) and set maintenanceAdmin.grafanaToken
+  2. Set maintenanceAdmin.hostname and maintenanceAdmin.auth.password
+  3. helm upgrade ... --set maintenanceAdmin.enabled=true ...
+
+Day-to-day (Grafana-UI-only admin): browse to the configured hostname.
+*/ -}}
+---
+# Python server script mounted into the container
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-maintenance-admin-script
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+data:
+  server.py: |-
+{{ .Files.Get "files/maintenance-admin-server.py" | indent 4 }}
+---
+# Credentials and Grafana token stored as a Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-maintenance-admin-secret
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  ADMIN_USERNAME: {{ .Values.maintenanceAdmin.auth.username | quote }}
+  ADMIN_PASSWORD: {{ .Values.maintenanceAdmin.auth.password | quote }}
+  GRAFANA_TOKEN:  {{ .Values.maintenanceAdmin.grafanaToken  | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-maintenance-admin
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: maintenance-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: glerp-monitoring
+      app.kubernetes.io/component: maintenance-admin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: glerp-monitoring
+        app.kubernetes.io/component: maintenance-admin
+      annotations:
+        checksum/script: {{ .Files.Get "files/maintenance-admin-server.py" | sha256sum }}
+        checksum/secret: {{ list .Values.maintenanceAdmin.auth.password .Values.maintenanceAdmin.grafanaToken | join ":" | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      containers:
+        - name: maintenance-admin
+          image: python:3.12-slim
+          command: ["python3", "/app/server.py"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: VM_URL
+              value: "http://{{ .Release.Name }}-victoriametrics.{{ .Values.namespace }}.svc.cluster.local:8428"
+            - name: GRAFANA_URL
+              value: {{ .Values.maintenanceAdmin.grafanaUrl | quote }}
+            - name: AM_URL
+              value: {{ .Values.maintenanceAdmin.alertmanagerUrl | quote }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-maintenance-admin-secret
+          volumeMounts:
+            - name: script
+              mountPath: /app
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: script
+          configMap:
+            name: {{ .Release.Name }}-maintenance-admin-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-maintenance-admin
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: maintenance-admin
+spec:
+  selector:
+    app.kubernetes.io/name: glerp-monitoring
+    app.kubernetes.io/component: maintenance-admin
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+{{- if .Values.maintenanceAdmin.hostname }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}-maintenance-admin
+  namespace: traefik-system
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    {{- if .Values.maintenanceAdmin.externalDnsTarget }}
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.maintenanceAdmin.hostname }}
+    external-dns.alpha.kubernetes.io/target: {{ .Values.maintenanceAdmin.externalDnsTarget }}
+    {{- end }}
+  labels:
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.maintenanceAdmin.hostname }}`) && PathPrefix(`/`)
+      middlewares:
+        - name: {{ .Values.maintenanceAdmin.googleMfaMiddleware.name }}
+          namespace: {{ .Values.maintenanceAdmin.googleMfaMiddleware.namespace }}
+      services:
+        - name: {{ .Release.Name }}-maintenance-admin
+          namespace: {{ .Values.namespace }}
+          port: 80
+          scheme: http
+  tls:
+    secretName: {{ .Values.maintenanceAdmin.tlsSecretName }}
+{{- end }}
+{{- end }}
