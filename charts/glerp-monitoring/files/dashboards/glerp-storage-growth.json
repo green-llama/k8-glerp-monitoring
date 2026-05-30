@@ -899,8 +899,7 @@
         "options": [],
         "query": "prometheus",
         "refresh": 1,
-        "type": "datasource",
-        "regex": "^Prometheus$"
+        "type": "datasource"
       },
       {
         "current": {},

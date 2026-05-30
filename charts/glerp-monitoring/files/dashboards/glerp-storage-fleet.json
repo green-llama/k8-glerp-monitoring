@@ -299,7 +299,7 @@
           "refId": "B"
         }
       ],
-      "title": "Longhorn Node Usage Trend (90 days)",
+      "title": "Longhorn Node Usage Trend",
       "type": "timeseries"
     },
     {
@@ -526,7 +526,7 @@
           "refId": "A"
         }
       ],
-      "title": "MinIO Node Storage Trend (90 days)",
+      "title": "MinIO Node Storage Trend",
       "type": "timeseries"
     },
     {
@@ -998,7 +998,7 @@
           "refId": "A"
         }
       ],
-      "title": "Node Filesystem Usage Trend (90 days)",
+      "title": "Node Filesystem Usage Trend",
       "type": "timeseries"
     }
   ],
@@ -1024,8 +1024,7 @@
         "query": "prometheus",
         "refresh": 1,
         "type": "datasource",
-        "label": "Data Source",
-        "regex": "^Prometheus$"
+        "label": "Data Source"
       },
       {
         "current": {},
