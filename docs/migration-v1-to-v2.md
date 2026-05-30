@@ -150,7 +150,7 @@ prometheus:
       - url: http://glerp-monitoring-victoriametrics.glerp-monitoring.svc:8428/api/v1/write
         writeRelabelConfigs:
           - sourceLabels: [__name__]
-            regex: "node_filesystem.*|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|kubelet_volume_stats.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
+            regex: "node_filesystem.*|node_uname_info|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|kubelet_volume_stats.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
             action: keep
     additionalScrapeConfigsSecret:
       name: glerp-monitoring-scrape-configs

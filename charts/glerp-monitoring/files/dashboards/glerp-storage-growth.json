@@ -474,7 +474,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 200
               }
             ]
           },
@@ -486,7 +486,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 160
+                "value": 280
               }
             ]
           },
@@ -593,7 +593,7 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 14,
+        "w": 12,
         "x": 0,
         "y": 7
       },
@@ -795,8 +795,8 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 10,
-        "x": 14,
+        "w": 12,
+        "x": 12,
         "y": 7
       },
       "id": 9,

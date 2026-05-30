@@ -8,7 +8,7 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.1.6
+version: 2.1.7
 appVersion: "2026.06"
 keywords:
   - monitoring
