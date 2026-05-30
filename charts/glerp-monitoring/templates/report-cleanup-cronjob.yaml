@@ -32,7 +32,7 @@ spec:
                         operator: DoesNotExist
           containers:
             - name: cleanup
-              image: busybox
+              image: busybox:1.37
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/sh

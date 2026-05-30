@@ -17,7 +17,7 @@ spec:
   #   kubectl get daemonset node-server -n directpv -o jsonpath='{.spec.selector.matchLabels}'
   selector:
     matchLabels:
-      {{ .Values.directpv.podSelectorKey }}: {{ .Values.directpv.podSelectorValue | quote }}
+      {{ .Values.directpv.podSelectorKey }}: {{ required "directpv.podSelectorValue must be set — run: kubectl get daemonset node-server -n directpv -o jsonpath='{.spec.selector.matchLabels}'" .Values.directpv.podSelectorValue | quote }}
   podMetricsEndpoints:
     - port: metrics
       path: /metrics

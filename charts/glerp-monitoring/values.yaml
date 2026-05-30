@@ -214,6 +214,11 @@ customers: []
 scanPriorityClassName: "glerp-scan-low"
 
 # Report server hostname and ingress configuration.
+# SECURITY NOTE: The report server uses FileBrowser with --noauth (authentication is
+# handled at the Traefik layer via the googleMfaMiddleware). If you expose reportHostname
+# without an authenticating middleware in front of it, all security audit reports
+# (kube-bench, ZAP findings) will be publicly readable. Always configure an auth
+# middleware at the IngressRoute level before exposing to the internet.
 reportHostname: ""            # e.g. security.greenllama.tech
 reportPort: ""                # non-standard HTTPS port only (e.g. "10443" for dev); blank = 443
 externalDnsTarget: ""         # e.g. pec.greenllama.tech — triggers external-dns Cloudflare record

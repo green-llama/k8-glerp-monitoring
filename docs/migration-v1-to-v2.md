@@ -153,14 +153,14 @@ prometheus:
             regex: "node_filesystem.*|node_uname_info|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|kubelet_volume_stats.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
             action: keep
     additionalScrapeConfigsSecret:
+      enabled: true
       name: glerp-monitoring-scrape-configs
       key: additional-scrape-configs.yaml
-      namespace: glerp-monitoring     # changed from cattle-monitoring-system
 ```
 
-> **Important**: The `additionalScrapeConfigsSecret.namespace` changes from
-> `cattle-monitoring-system` to `glerp-monitoring`. Without this update, site probing
-> (uptime/SLA monitoring) will not work.
+> **Note**: The Prometheus Operator `additionalScrapeConfigsSecret` field has no `namespace`
+> override — the secret must be in the same namespace as the Prometheus object
+> (`cattle-monitoring-system`). The chart creates the secret there automatically.
 
 ---
 

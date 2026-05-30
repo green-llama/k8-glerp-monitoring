@@ -79,15 +79,15 @@ Grafana Dashboards
 
 Dashboards appear in Grafana → "{{ .Values.grafana.folderName }}" within ~60 seconds.
 
-  Uptime Overview              — /d/glerp-uptime-overview
-  SLA Compliance               — /d/glerp-sla-compliance
-  Internet Connectivity        — /d/glerp-internet
-  Customer SLA Report          — /d/glerp-customer-sla
-  Cluster Storage Overview     — /d/glerp-storage-fleet
-  Customer Storage Report      — /d/glerp-storage-customer
-  Namespace Storage Breakdown  — /d/glerp-storage-namespaces
-  Capacity Planning & Growth   — /d/glerp-storage-growth
-  Security CIS/SOC2 Compliance — /d/glerp-sec-audit-cis
+  GLerp Uptime — Cluster Overview    — /d/glerp-uptime-overview
+  GLerp Uptime — SLA Compliance      — /d/glerp-sla-compliance
+  GLerp Uptime — Internet Conn.      — /d/glerp-internet
+  GLerp Uptime — Customer SLA        — /d/glerp-customer-sla
+  GLerp Storage — Cluster Overview   — /d/glerp-storage-fleet
+  GLerp Storage — Customer Report    — /d/glerp-storage-customer
+  GLerp Storage — Namespace Brkdown  — /d/glerp-storage-namespaces
+  GLerp Storage — Capacity Planning  — /d/glerp-storage-growth
+  GLerp Security — CIS/SOC2          — /d/glerp-sec-audit-cis
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Verify targets are UP
