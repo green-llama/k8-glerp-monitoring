@@ -40,7 +40,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 28
       },
       "title": "MinIO Object Storage",
       "type": "row"
@@ -72,7 +72,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 1
+        "y": 29
       },
       "options": {
         "reduceOptions": {
@@ -126,7 +126,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 1
+        "y": 29
       },
       "options": {
         "reduceOptions": {
@@ -138,7 +138,7 @@
         "graphMode": "none",
         "textMode": "auto"
       },
-      "description": "The effective storage quota for this customer's MinIO tenant — the total capacity available for business file uploads. Backed by DirectPV direct-attached NVMe drives. When MinIO Used approaches this limit, new file uploads will begin failing across all GLerp document types. Contact the infrastructure team to expand the MinIO pool before reaching 95% utilization.",
+      "description": "The effective storage quota for this customer's MinIO tenant \u2014 the total capacity available for business file uploads. Backed by DirectPV direct-attached NVMe drives. When MinIO Used approaches this limit, new file uploads will begin failing across all GLerp document types. Contact the infrastructure team to expand the MinIO pool before reaching 95% utilization.",
       "targets": [
         {
           "datasource": {
@@ -190,7 +190,7 @@
         "h": 5,
         "w": 6,
         "x": 12,
-        "y": 1
+        "y": 29
       },
       "options": {
         "reduceOptions": {
@@ -202,7 +202,7 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "description": "Percentage of the customer's MinIO quota currently consumed by uploaded business files. Yellow warning fires at 80% — begin planning capacity expansion. Red critical fires at 95% — immediate action required to prevent upload failures that will block document creation across all GLerp modules.",
+      "description": "Percentage of the customer's MinIO quota currently consumed by uploaded business files. Yellow warning fires at 80% \u2014 begin planning capacity expansion. Red critical fires at 95% \u2014 immediate action required to prevent upload failures that will block document creation across all GLerp modules.",
       "targets": [
         {
           "datasource": {
@@ -244,7 +244,7 @@
         "h": 5,
         "w": 6,
         "x": 18,
-        "y": 1
+        "y": 29
       },
       "options": {
         "reduceOptions": {
@@ -291,7 +291,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 34
       },
       "options": {
         "tooltip": {
@@ -322,7 +322,7 @@
           "refId": "B"
         }
       ],
-      "title": "MinIO Usage Trend (90 days)",
+      "title": "MinIO Usage Trend",
       "type": "timeseries"
     },
     {
@@ -342,7 +342,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Actual bytes written to the MariaDB database volume. MariaDB is the core of GLerp — it stores every business record: sales and purchase orders, invoices, payments, journal entries, chart of accounts, customer and supplier master data, stock movements and valuation, manufacturing BOMs, HR records, leave allocations, payroll slips, and all system configuration. Storage grows with each transaction, report run, or configuration change. Unusual growth may indicate large binary attachments stored directly in the database, long audit trail retention, or high transaction volume. Storage class: longhorn-crypto-mariadb-rwo.",
+      "description": "Actual bytes written to the MariaDB database volume. MariaDB is the core of GLerp \u2014 it stores every business record: sales and purchase orders, invoices, payments, journal entries, chart of accounts, customer and supplier master data, stock movements and valuation, manufacturing BOMs, HR records, leave allocations, payroll slips, and all system configuration. Storage grows with each transaction, report run, or configuration change. Unusual growth may indicate large binary attachments stored directly in the database, long audit trail retention, or high transaction volume. Storage class: longhorn-crypto-mariadb-rwo.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -514,7 +514,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 0
       },
       "title": "Longhorn Block Storage",
       "type": "row"
@@ -524,7 +524,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Actual bytes written to the GLerp filesystem volume. This RWX (ReadWriteMany) Longhorn volume holds everything outside the database: site configuration files, installed custom apps and their assets, print format templates, letterhead images, report definitions exported as files, and the ERPNext public/private file storage tree. ERPNext natively stores file attachments here, however GLerp is configured with DFP S3 Storage — any client documents saved to Home or Home/Attachments (both private and public) are automatically offloaded to the customer's MinIO tenant rather than written to this volume. As a result, this volume grows primarily from system and application data rather than client document uploads; client files appear in the MinIO usage above. Unusual growth on this volume typically indicates custom app installations, large print format assets, or system-generated files not covered by the S3 offload policy. Storage class: longhorn-crypto-rwm.",
+      "description": "Actual bytes written to the GLerp filesystem volume. This RWX (ReadWriteMany) Longhorn volume holds everything outside the database: site configuration files, installed custom apps and their assets, print format templates, letterhead images, report definitions exported as files, and the ERPNext public/private file storage tree. ERPNext natively stores file attachments here, however GLerp is configured with DFP S3 Storage \u2014 any client documents saved to Home or Home/Attachments (both private and public) are automatically offloaded to the customer's MinIO tenant rather than written to this volume. As a result, this volume grows primarily from system and application data rather than client document uploads; client files appear in the MinIO usage above. Unusual growth on this volume typically indicates custom app installations, large print format assets, or system-generated files not covered by the S3 offload policy. Storage class: longhorn-crypto-rwm.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -547,7 +547,7 @@
         "h": 5,
         "w": 8,
         "x": 0,
-        "y": 29
+        "y": 1
       },
       "options": {
         "reduceOptions": {
@@ -600,7 +600,7 @@
         "h": 5,
         "w": 8,
         "x": 8,
-        "y": 29
+        "y": 1
       },
       "options": {
         "reduceOptions": {
@@ -663,7 +663,7 @@
         "h": 5,
         "w": 8,
         "x": 16,
-        "y": 29
+        "y": 1
       },
       "options": {
         "reduceOptions": {
@@ -697,31 +697,52 @@
       "description": "90-day actual vs provisioned usage for the MariaDB database PVC (longhorn-crypto-mariadb-rwo).",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
           "unit": "bytes"
         }
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
       "options": {
-        "tooltip": { "mode": "multi" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
           "expr": "longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc=~\".*mariadb.*\"}",
           "legendFormat": "{{pvc}} (actual)",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
           "expr": "longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\", pvc=~\".*mariadb.*\"}",
           "legendFormat": "{{pvc}} (provisioned)",
           "refId": "B"
         }
       ],
-      "title": "MariaDB Storage Trend (90 days)",
+      "title": "MariaDB Storage Trend",
       "type": "timeseries"
     },
     {
@@ -732,31 +753,52 @@
       "description": "90-day actual vs provisioned usage for the GLerp filesystem PVC (longhorn-crypto-rwm).",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
           "unit": "bytes"
         }
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
       "options": {
-        "tooltip": { "mode": "multi" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
           "expr": "longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}",
           "legendFormat": "{{pvc}} (actual)",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
           "expr": "longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}",
           "legendFormat": "{{pvc}} (provisioned)",
           "refId": "B"
         }
       ],
-      "title": "Block Storage Trend (90 days)",
+      "title": "Block Storage Trend",
       "type": "timeseries"
     },
     {
@@ -1012,7 +1054,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "GLerp Storage — Customer Report",
+  "title": "GLerp Storage \u2014 Customer Report",
   "uid": "glerp-storage-customer",
   "version": 1
 }

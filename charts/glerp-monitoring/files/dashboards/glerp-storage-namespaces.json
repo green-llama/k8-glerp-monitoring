@@ -1,8 +1,10 @@
 {
   "__inputs": [],
   "__requires": [],
-  "annotations": { "list": [] },
-  "description": "All-namespace storage breakdown — Longhorn, MinIO, and PVC usage across the cluster",
+  "annotations": {
+    "list": []
+  },
+  "description": "All-namespace storage breakdown \u2014 Longhorn, MinIO, and PVC usage across the cluster",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -24,30 +26,70 @@
   "panels": [
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
-      "title": "Fleet Totals",
+      "title": "Cluster Totals",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "#27B093" },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#27B093"
+          },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
       "id": 2,
-      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "title": "Total Longhorn Used",
       "type": "stat",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "glerp:longhorn_cluster_usage_bytes",
           "instant": true,
           "legendFormat": "Used"
@@ -55,24 +97,59 @@
       ]
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "#2B5B6C" },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2B5B6C"
+          },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
       "id": 3,
-      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "title": "Total Longhorn Capacity",
       "type": "stat",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "glerp:longhorn_cluster_capacity_bytes",
           "instant": true,
           "legendFormat": "Capacity"
@@ -80,24 +157,59 @@
       ]
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "#77C5D5" },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#77C5D5"
+          },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
       "id": 4,
-      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "title": "Total MinIO Usable",
       "type": "stat",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(minio_cluster_capacity_usable_total_bytes)",
           "instant": true,
           "legendFormat": "Usable"
@@ -105,24 +217,59 @@
       ]
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "#9BE198" },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#9BE198"
+          },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
       "id": 5,
-      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "title": "Total MinIO Used",
       "type": "stat",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(minio_cluster_usage_total_bytes)",
           "instant": true,
           "legendFormat": "Used"
@@ -131,42 +278,102 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
       "id": 10,
       "title": "Top Namespaces by Longhorn Usage",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "continuous-GrYlRd" },
-          "custom": { "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1 },
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1
+          },
           "mappings": [],
           "thresholds": {
             "mode": "percentage",
             "steps": [
-              { "color": "#27B093", "value": null },
-              { "color": "#f0d349", "value": 70 },
-              { "color": "#e04b4b", "value": 85 }
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f0d349",
+                "value": 70
+              },
+              {
+                "color": "#e04b4b",
+                "value": 85
+              }
             ]
           },
           "unit": "bytes"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#D1E0D7"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Provisioned"
+              }
+            ]
+          }
+        ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
       "id": 11,
       "options": {
         "barRadius": 0.05,
         "barWidth": 0.7,
         "fullHighlight": false,
         "groupWidth": 0.7,
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
         "orientation": "horizontal",
         "showValue": "always",
         "stacking": "none",
-        "tooltip": { "mode": "single", "sort": "none" },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
         "xTickLabelRotation": 0,
         "xTickLabelSpacing": 200
       },
@@ -174,215 +381,97 @@
       "type": "barchart",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "topk(20, glerp:longhorn_namespace_usage_bytes)",
           "instant": true,
-          "legendFormat": "{{ claimnamespace }}"
-        }
-      ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
-      "id": 20,
-      "title": "Namespace Storage Detail Table",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left",
-            "cellOptions": { "type": "auto" },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "#f0d349", "value": 0.7 },
-              { "color": "#e04b4b", "value": 0.85 }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Longhorn Used" },
-            "properties": [{ "id": "unit", "value": "bytes" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Longhorn Provisioned" },
-            "properties": [{ "id": "unit", "value": "bytes" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "MinIO Used" },
-            "properties": [{ "id": "unit", "value": "bytes" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "MinIO Usable" },
-            "properties": [{ "id": "unit", "value": "bytes" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Longhorn %" },
-            "properties": [
-              { "id": "unit", "value": "percentunit" },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    { "color": "#27B093", "value": null },
-                    { "color": "#f0d349", "value": 0.7 },
-                    { "color": "#e04b4b", "value": 0.85 }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "MinIO %" },
-            "properties": [
-              { "id": "unit", "value": "percentunit" },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    { "color": "#27B093", "value": null },
-                    { "color": "#f0d349", "value": 0.8 },
-                    { "color": "#e04b4b", "value": 0.95 }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 17 },
-      "id": 21,
-      "options": {
-        "cellHeight": "sm",
-        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
-        "showHeader": true,
-        "sortBy": [{ "desc": true, "displayName": "Longhorn Used" }]
-      },
-      "title": "All Namespaces — Storage Summary",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
+          "legendFormat": "{{ claimnamespace }} (Used)",
+          "refId": "A"
         },
         {
-          "id": "organize",
-          "options": {
-            "excludeByName": { "Time": true, "__name__": true },
-            "renameByName": {
-              "Value #longhorn_used": "Longhorn Used",
-              "Value #longhorn_provisioned": "Longhorn Provisioned",
-              "Value #longhorn_pct": "Longhorn %",
-              "Value #minio_used": "MinIO Used",
-              "Value #minio_usable": "MinIO Usable",
-              "Value #minio_pct": "MinIO %",
-              "claimnamespace": "Namespace",
-              "namespace": "Namespace"
-            }
-          }
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "topk(20, glerp:longhorn_namespace_provisioned_bytes)",
+          "instant": true,
+          "legendFormat": "{{ claimnamespace }} (Provisioned)",
+          "refId": "B"
         }
       ],
-      "type": "table",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "glerp:longhorn_namespace_usage_bytes",
-          "instant": true,
-          "legendFormat": "{{ claimnamespace }}",
-          "refId": "longhorn_used"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (namespace) (glerp:longhorn_namespace_provisioned_bytes)",
-          "instant": true,
-          "legendFormat": "{{ namespace }}",
-          "refId": "longhorn_provisioned"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "glerp:longhorn_namespace_usage_bytes / on(claimnamespace) group_left() label_replace(sum by (namespace)(glerp:longhorn_namespace_provisioned_bytes), \"claimnamespace\", \"$1\", \"namespace\", \"(.+)\")",
-          "instant": true,
-          "legendFormat": "{{ claimnamespace }}",
-          "refId": "longhorn_pct"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (namespace)(minio_cluster_usage_total_bytes)",
-          "instant": true,
-          "legendFormat": "{{ namespace }}",
-          "refId": "minio_used"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (namespace)(minio_cluster_capacity_usable_total_bytes)",
-          "instant": true,
-          "legendFormat": "{{ namespace }}",
-          "refId": "minio_usable"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (namespace)(minio_cluster_usage_total_bytes) / sum by (namespace)(minio_cluster_capacity_usable_total_bytes)",
-          "instant": true,
-          "legendFormat": "{{ namespace }}",
-          "refId": "minio_pct"
-        }
-      ]
+      "description": "Actual bytes consumed by Longhorn volumes per namespace. The green bar shows actual disk usage; the gray bar shows provisioned (requested) capacity.\n\n**Why actual usage can exceed provisioned:** Longhorn stores multiple replicas of each volume (default 3\u00d7). The actual bytes on disk = logical data \u00d7 replica count + snapshot overhead. A volume provisioned at 10 GiB with 3 replicas will consume ~30 GiB of raw node storage. Additionally, Longhorn snapshots grow over time as data changes. Provisioned capacity reflects what Kubernetes sees; actual usage reflects real disk consumption."
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
       "id": 30,
       "title": "Storage Distribution",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
           "mappings": [],
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 32 },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
       "id": 31,
       "options": {
-        "displayLabels": ["name", "percent"],
-        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": ["value", "percent"] },
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
         "pieType": "donut",
-        "tooltip": { "mode": "single", "sort": "none" }
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "title": "Longhorn Usage by Namespace",
       "type": "piechart",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "glerp:longhorn_namespace_usage_bytes > 0",
           "instant": true,
           "legendFormat": "{{ claimnamespace }}"
@@ -390,29 +479,62 @@
       ]
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
           "mappings": [],
           "unit": "bytes"
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 32 },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
       "id": 32,
       "options": {
-        "displayLabels": ["name", "percent"],
-        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": ["value", "percent"] },
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
         "pieType": "donut",
-        "tooltip": { "mode": "single", "sort": "none" }
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "title": "MinIO Usage by Namespace",
       "type": "piechart",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (namespace)(minio_cluster_usage_total_bytes) > 0",
           "instant": true,
           "legendFormat": "{{ namespace }}"
@@ -421,16 +543,26 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
       "id": 40,
       "title": "Storage Utilization Over Time",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 2,
             "fillOpacity": 10,
@@ -442,27 +574,47 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 43 },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
       "id": 41,
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "title": "Longhorn Usage Over Time by Namespace",
       "type": "timeseries",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "glerp:longhorn_namespace_usage_bytes > 0",
           "legendFormat": "{{ claimnamespace }}"
         }
       ]
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 2,
             "fillOpacity": 10,
@@ -474,17 +626,32 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 43 },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
       "id": 42,
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "title": "MinIO Usage Over Time by Namespace",
       "type": "timeseries",
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (namespace)(minio_cluster_usage_total_bytes) > 0",
           "legendFormat": "{{ namespace }}"
         }
@@ -493,67 +660,127 @@
     {
       "collapsed": false,
       "description": "Per-drive DirectPV storage breakdown for the selected namespace. Select a namespace above to filter to that tenant's drives.",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
       "id": 50,
-      "title": "DirectPV Storage — $namespace",
+      "title": "DirectPV Storage \u2014 $namespace",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "description": "DirectPV drives allocated to PVCs in the selected namespace. Each row is one physical drive on one node. Use this view to identify which node needs capacity added.",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto",
-            "cellOptions": { "type": "auto" },
+            "cellOptions": {
+              "type": "auto"
+            },
             "filterable": true,
             "inspect": false
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "#27B093", "value": null }]
-          }
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "% Used" },
+            "matcher": {
+              "id": "byName",
+              "options": "% Used"
+            },
             "properties": [
               {
                 "id": "custom.cellOptions",
-                "value": { "type": "color-background", "mode": "gradient" }
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
               },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "#27B093", "value": null },
-                    { "color": "#f5a623", "value": 70 },
-                    { "color": "#e02f44", "value": 85 }
+                    {
+                      "color": "#27B093",
+                      "value": null
+                    },
+                    {
+                      "color": "#f5a623",
+                      "value": 70
+                    },
+                    {
+                      "color": "#e02f44",
+                      "value": 85
+                    }
                   ]
                 }
               },
-              { "id": "unit", "value": "percent" },
-              { "id": "max", "value": 100 }
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
             ]
           },
           {
-            "matcher": { "id": "byRegexp", "options": "(Capacity|Used|Free)" },
-            "properties": [{ "id": "unit", "value": "bytes" }]
+            "matcher": {
+              "id": "byRegexp",
+              "options": "(Capacity|Used|Free)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
           }
         ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 54 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
       "id": 51,
       "options": {
         "showHeader": true,
-        "sortBy": [{ "displayName": "% Used", "desc": true }],
-        "footer": { "show": false }
+        "sortBy": [
+          {
+            "displayName": "% Used",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "directpv_stats_bytes_total * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
           "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
           "instant": true,
@@ -561,7 +788,10 @@
           "refId": "Allocated"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "directpv_stats_bytes_used * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
           "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
           "instant": true,
@@ -569,7 +799,10 @@
           "refId": "Used"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "(directpv_stats_bytes_total - directpv_stats_bytes_used) * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
           "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
           "instant": true,
@@ -577,7 +810,10 @@
           "refId": "Free"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "directpv_stats_bytes_used / directpv_stats_bytes_total * 100 * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
           "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
           "instant": true,
@@ -585,9 +821,12 @@
           "refId": "PctUsed"
         }
       ],
-      "title": "DirectPV PVC Breakdown — $namespace",
+      "title": "DirectPV PVC Breakdown \u2014 $namespace",
       "transformations": [
-        { "id": "merge", "options": {} },
+        {
+          "id": "merge",
+          "options": {}
+        },
         {
           "id": "organize",
           "options": {
@@ -628,7 +867,11 @@
   ],
   "refresh": "5m",
   "schemaVersion": 39,
-  "tags": ["glerp", "storage", "namespaces"],
+  "tags": [
+    "glerp",
+    "storage",
+    "namespaces"
+  ],
   "templating": {
     "list": [
       {
@@ -645,7 +888,10 @@
       },
       {
         "current": {},
-        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
         "definition": "label_values(minio_cluster_usage_total_bytes, namespace)",
         "hide": 0,
         "includeAll": false,
@@ -663,10 +909,13 @@
       }
     ]
   },
-  "time": { "from": "now-3h", "to": "now" },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
-  "title": "GLerp Storage — Namespace Breakdown",
+  "title": "GLerp Storage \u2014 Namespace Breakdown",
   "uid": "glerp-storage-namespaces",
   "version": 1
 }

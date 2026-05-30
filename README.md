@@ -326,6 +326,143 @@ charts/
 
 ---
 
+## Post-Install: Enable DirectPV Physical Drive Capacity Metrics (Recommended)
+
+DirectPV's Prometheus metrics only cover per-volume written bytes. Physical drive capacity
+(e.g. 25 GiB per node) lives in the `DirectPVDrive` CRD and must be exposed via
+kube-state-metrics Custom Resource State. Without this step, the Cluster Overview dashboard
+cannot show physical **Drive Capacity** or true physical **Free** space per node.
+
+> **Metric name note**: kube-state-metrics automatically prepends `kube_customresource_` to all
+> custom resource metrics. The resulting Prometheus metric names are:
+> - `kube_customresource_directpv_drive_total_capacity_bytes`
+> - `kube_customresource_directpv_drive_allocated_capacity_bytes`
+> - `kube_customresource_directpv_drive_free_capacity_bytes`
+
+### Step 4a — Identify the kube-state-metrics ServiceAccount
+
+```bash
+kubectl get sa -n cattle-monitoring-system --request-timeout=5s | grep kube-state
+# Typical output: rancher-monitoring-kube-state-metrics
+```
+
+### Step 4b — RBAC for kube-state-metrics
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics-directpv
+rules:
+  - apiGroups: ["directpv.min.io"]
+    resources: ["directpvdrives"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics-directpv
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics-directpv
+subjects:
+  - kind: ServiceAccount
+    name: rancher-monitoring-kube-state-metrics   # update if SA name differs
+    namespace: cattle-monitoring-system
+EOF
+```
+
+### Step 4c — Add Custom Resource State to rancher-monitoring
+
+In **Rancher UI → Apps → rancher-monitoring → Edit/Upgrade → Edit YAML**, add:
+
+```yaml
+kube-state-metrics:
+  customResourceState:
+    enabled: true
+    config:
+      spec:
+        resources:
+          - groupVersionKind:
+              group: directpv.min.io
+              version: v1beta1
+              kind: DirectPVDrive
+            metrics:
+              - name: directpv_drive_total_capacity_bytes
+                help: "Total physical capacity of DirectPV drive"
+                each:
+                  type: Gauge
+                  gauge:
+                    path: [status, totalCapacity]
+                labelsFromPath:
+                  node: [metadata, labels, "directpv.min.io/node"]
+                  drive: [metadata, labels, "directpv.min.io/drive-name"]
+              - name: directpv_drive_allocated_capacity_bytes
+                help: "Allocated capacity of DirectPV drive (sum of provisioned PVC sizes)"
+                each:
+                  type: Gauge
+                  gauge:
+                    path: [status, allocatedCapacity]
+                labelsFromPath:
+                  node: [metadata, labels, "directpv.min.io/node"]
+                  drive: [metadata, labels, "directpv.min.io/drive-name"]
+              - name: directpv_drive_free_capacity_bytes
+                help: "Free physical capacity of DirectPV drive"
+                each:
+                  type: Gauge
+                  gauge:
+                    path: [status, freeCapacity]
+                labelsFromPath:
+                  node: [metadata, labels, "directpv.min.io/node"]
+                  drive: [metadata, labels, "directpv.min.io/drive-name"]
+```
+
+### Step 4d — Force restart kube-state-metrics
+
+The Helm upgrade does **not** reliably restart the kube-state-metrics pod. Force it:
+
+```bash
+kubectl rollout restart deployment/rancher-monitoring-kube-state-metrics \
+  -n cattle-monitoring-system --request-timeout=30s
+
+kubectl rollout status deployment/rancher-monitoring-kube-state-metrics \
+  -n cattle-monitoring-system --request-timeout=60s
+```
+
+### Step 4e — Verify metrics are flowing
+
+Allow ~60s after the pod restart, then query in Prometheus UI → Explore:
+
+```
+kube_customresource_directpv_drive_total_capacity_bytes
+```
+
+Expected: one series per worker node, value `26843545600` (25 GiB).
+
+If no results, check the kube-state-metrics logs for config load confirmation:
+
+```bash
+kubectl logs -n cattle-monitoring-system \
+  -l app.kubernetes.io/name=kube-state-metrics --tail=20 --request-timeout=10s \
+  | grep -i "directpv\|customresource"
+# Should show: "Adding metrics for ... directpv.min.io/v1beta1, Kind=DirectPVDrive"
+```
+
+> **Troubleshooting**: If metrics still don't appear after pod restart, verify the ServiceAccount
+> name matches what is in the ClusterRoleBinding: `kubectl get sa -n cattle-monitoring-system | grep kube-state`.
+> Re-apply the ClusterRoleBinding with the correct name and restart the pod again.
+
+### Step 4f — Confirm remoteWrite filter includes DirectPV CRD metrics
+
+The Prometheus → VictoriaMetrics remoteWrite regex (Step 1) must include
+`kube_customresource_directpv.*` so these metrics are stored for 90-day trend panels.
+The regex in this chart already includes this pattern — verify it is present in your
+live rancher-monitoring configuration.
+
+---
+
 ## License
 
 Internal use — Green Llama Technologies.
