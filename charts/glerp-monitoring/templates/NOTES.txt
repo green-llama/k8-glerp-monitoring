@@ -40,22 +40,93 @@ Then set alertmanager.telegram.enabled=true and alertmanager.telegram.chatId in 
 OPTIONAL — Enable DirectPV physical drive capacity metrics (one-time)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-See README.md section "Post-Install: Enable DirectPV Physical Drive Capacity Metrics"
-for the kube-state-metrics RBAC and customResourceState configuration steps.
+Step 1 — Get the DirectPV pod selector label (needed for directpv.podSelectorValue):
+
+  kubectl get daemonset node-server -n {{ .Values.directpv.namespace }} \
+    -o jsonpath='{.spec.selector.matchLabels}' --request-timeout=5s
+
+Step 2 — Grant kube-state-metrics access to DirectPVDrive CRDs:
+
+  kubectl apply -f - <<'EOF'
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: kube-state-metrics-directpv
+  rules:
+    - apiGroups: ["directpv.min.io"]
+      resources: ["directpvdrives"]
+      verbs: ["get", "list", "watch"]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: kube-state-metrics-directpv
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: kube-state-metrics-directpv
+  subjects:
+    - kind: ServiceAccount
+      name: rancher-monitoring-kube-state-metrics
+      namespace: cattle-monitoring-system
+  EOF
+
+Step 3 — Add customResourceState to rancher-monitoring via Rancher UI
+  (Apps → rancher-monitoring → Edit YAML, under kube-state-metrics):
+
+  kube-state-metrics:
+    customResourceState:
+      enabled: true
+      config:
+        spec:
+          resources:
+            - groupVersionKind:
+                group: directpv.min.io
+                version: v1beta1
+                kind: DirectPVDrive
+              metrics:
+                - name: directpv_drive_total_capacity_bytes
+                  each:
+                    type: Gauge
+                    gauge:
+                      path: [status, totalCapacity]
+                  labelsFromPath:
+                    node: [metadata, labels, "directpv.min.io/node"]
+                    drive: [metadata, labels, "directpv.min.io/drive-name"]
+                - name: directpv_drive_allocated_capacity_bytes
+                  each:
+                    type: Gauge
+                    gauge:
+                      path: [status, allocatedCapacity]
+                  labelsFromPath:
+                    node: [metadata, labels, "directpv.min.io/node"]
+                    drive: [metadata, labels, "directpv.min.io/drive-name"]
+                - name: directpv_drive_free_capacity_bytes
+                  each:
+                    type: Gauge
+                    gauge:
+                      path: [status, freeCapacity]
+                  labelsFromPath:
+                    node: [metadata, labels, "directpv.min.io/node"]
+                    drive: [metadata, labels, "directpv.min.io/drive-name"]
+
+Step 4 — Restart kube-state-metrics after the rancher-monitoring upgrade:
+
+  kubectl rollout restart deployment/rancher-monitoring-kube-state-metrics \
+    -n cattle-monitoring-system --request-timeout=5s
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OPTIONAL — Enable MinIO tenant metrics (per tenant, one-time)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For each customer's MinIO Tenant, add:
-  spec:
-    env:
-      - name: MINIO_PROMETHEUS_AUTH_TYPE
-        value: "public"
+MinIO metrics are auto-discovered — no values.yaml change required.
+Simply patch each tenant once to expose its metrics endpoint:
 
   kubectl patch tenant <TENANT_NAME> -n <NAMESPACE> \
     --type=json \
     -p '[{"op":"add","path":"/spec/env/-","value":{"name":"MINIO_PROMETHEUS_AUTH_TYPE","value":"public"}}]'
+
+Prometheus will discover and scrape the tenant within ~60 seconds.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OPTIONAL — Enable security scanning (Trivy, kube-bench, ZAP)

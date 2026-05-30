@@ -176,21 +176,23 @@ directpv:
     scrapeTimeout: "30s"
 
 # ── Customer list ──────────────────────────────────────────────────────────────
-# Each entry creates:
-#   - A MinIO ServiceMonitor for the customer namespace (if minio.enabled)
-#   - Optional Longhorn soft-cap recording rules (if quotaGi.longhorn is set)
+# OPTIONAL — only needed if you want per-customer Longhorn soft-cap quota alerts.
+# MinIO metrics are auto-discovered cluster-wide; customers do NOT need to be
+# listed here for MinIO scraping to work.
+#
+# Each entry creates optional Longhorn soft-cap quota recording rules
+# (glerp:storage_quota_gi) which drive CustomerLonghornQuota alerts.
+# Customers without a quotaGi.longhorn value use auto-detected PVC capacity.
 #
 # IMPORTANT: Lists do NOT merge across override files — the entire list is
 # replaced by the override. Document all customers in one values file.
 customers: []
 # Example:
-#  - name: "Acme Corp"         # display name in dashboards and alerts
+#  - name: "Acme Corp"         # display name in alerts and dashboard labels
 #    slug: "acme"              # short slug for label values (no spaces)
 #    namespace: "acme.greenllama.tech"  # exact Kubernetes namespace name
 #    quotaGi:
-#      longhorn: null          # null = auto-detect; number = soft cap in Gi
-#    minio:
-#      enabled: true           # false if no MinIO Tenant in this namespace
+#      longhorn: null          # null = auto-detect from PVC sizes; number = soft cap in Gi
 
 # ── Capacity planning predictive alerts (FUTURE — not yet implemented) ─────────
 # The Capacity Planning & Growth dashboard already shows projected days-to-threshold

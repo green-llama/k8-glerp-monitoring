@@ -1,50 +1,48 @@
 {{- /*
-Creates one PodMonitor per customer namespace that has minio.enabled=true.
-Each PodMonitor scrapes MinIO tenant pods directly at container port minio-port (9000),
-path /minio/v2/metrics/cluster.
+Single cluster-wide PodMonitor that auto-discovers all MinIO Tenant pods
+across every namespace using the v1.min.io/tenant label set by MinIO Operator.
 
-PREREQUISITE: Each MinIO Tenant must have MINIO_PROMETHEUS_AUTH_TYPE=public set
-in its spec.env. See NOTES.txt for the kubectl patch command.
+PREREQUISITE: Each MinIO Tenant must have MINIO_PROMETHEUS_AUTH_TYPE=public set.
+Patch command (one-time per tenant):
+  kubectl patch tenant <TENANT_NAME> -n <NAMESPACE> \
+    --type=json \
+    -p '[{"op":"add","path":"/spec/env/-","value":{"name":"MINIO_PROMETHEUS_AUTH_TYPE","value":"public"}}]'
 
-MinIO Operator labels pool pods with v1.min.io/tenant=<tenant-name>. The headless
-service (<tenant>-hl) has empty labels and cannot be used as a ServiceMonitor target,
-so we target pods directly via PodMonitor.
+Once patched, Prometheus discovers and scrapes the tenant within ~60 seconds.
+No values.yaml change required — customers do NOT need to be listed in the
+customers[] array for MinIO metrics to be collected.
 
-If scrape targets show as DOWN with a "port not found" error, verify the port name:
+If scrape targets show as DOWN with "port not found", verify the port name:
   kubectl get pod -n <namespace> -l v1.min.io/tenant=<tenant-name> \
     -o jsonpath='{.items[0].spec.containers[*].ports}'
-Confirmed port name for MinIO Operator v5: minio-port (9000) and console-port (9090).
+Confirmed port name for MinIO Operator v5: minio-port (9000).
 */ -}}
-{{- range .Values.customers }}
-{{- if .minio.enabled }}
----
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: {{ printf "glerp-storage-monitor-minio-%s" .slug }}
-  namespace: {{ $.Values.namespace }}
+  name: {{ .Release.Name }}-minio-tenants
+  namespace: {{ .Values.namespace }}
   labels:
-    {{- include "glerp-monitoring.labels" $ | nindent 4 }}
-    {{- include "glerp-monitoring.prometheusRuleLabels" $ | nindent 4 }}
-    glerp.io/customer-slug: {{ .slug | quote }}
+    {{- include "glerp-monitoring.labels" . | nindent 4 }}
+    {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}
 spec:
   namespaceSelector:
-    matchNames:
-      - {{ .namespace | quote }}
+    any: true
   selector:
-    matchLabels:
-      v1.min.io/tenant: {{ .minio.tenantName | default (printf "%s-minio-tenant" .slug) | quote }}
+    matchExpressions:
+      - key: v1.min.io/tenant
+        operator: Exists
   podMetricsEndpoints:
     - port: minio-port
       path: /minio/v2/metrics/cluster
       interval: "60s"
       scrapeTimeout: "30s"
       relabelings:
-        - targetLabel: namespace
-          replacement: {{ .namespace | quote }}
-        - targetLabel: customer_slug
-          replacement: {{ .slug | quote }}
-        - targetLabel: job
-          replacement: {{ printf "minio-%s" .slug | quote }}
-{{- end }}
-{{- end }}
+        # Carry the tenant name and namespace into metrics as useful labels.
+        - sourceLabels: [__meta_kubernetes_pod_label_v1_min_io_tenant]
+          targetLabel: tenant
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: job
+          replacement: "minio-$1"
