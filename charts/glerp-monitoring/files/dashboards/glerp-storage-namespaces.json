@@ -4,7 +4,7 @@
   "annotations": {
     "list": []
   },
-  "description": "All-namespace storage breakdown \u2014 Longhorn, MinIO, and PVC usage across the cluster",
+  "description": "Cross-namespace storage comparison \u2014 rank every namespace by Longhorn and MinIO consumption to spot the heavy hitters, see distribution share, and compare growth.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -62,10 +62,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 0,
-        "y": 1
+        "y": 1,
+        "w": 6,
+        "h": 4
       },
       "id": 2,
       "options": {
@@ -122,10 +122,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 6,
-        "y": 1
+        "y": 1,
+        "w": 6,
+        "h": 4
       },
       "id": 3,
       "options": {
@@ -182,10 +182,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 12,
-        "y": 1
+        "y": 1,
+        "w": 6,
+        "h": 4
       },
       "id": 4,
       "options": {
@@ -242,10 +242,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 18,
-        "y": 1
+        "y": 1,
+        "w": 6,
+        "h": 4
       },
       "id": 5,
       "options": {
@@ -284,8 +284,8 @@
         "x": 0,
         "y": 5
       },
-      "id": 10,
-      "title": "Top Namespaces by Longhorn Usage",
+      "id": 6,
+      "title": "Namespace Consumption \u2014 Used (ranked most \u2192 least)",
       "type": "row"
     },
     {
@@ -328,35 +328,15 @@
           },
           "unit": "bytes"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#D1E0D7"
-                }
-              },
-              {
-                "id": "displayName",
-                "value": "Provisioned"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
         "x": 0,
-        "y": 6
+        "y": 6,
+        "w": 12,
+        "h": 10
       },
-      "id": 11,
+      "id": 7,
       "options": {
         "barRadius": 0.05,
         "barWidth": 0.7,
@@ -365,7 +345,7 @@
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "orientation": "horizontal",
         "showValue": "always",
@@ -377,7 +357,7 @@
         "xTickLabelRotation": 0,
         "xTickLabelSpacing": 200
       },
-      "title": "Longhorn Actual Usage by Namespace (Top 20)",
+      "title": "Longhorn Used by Namespace (Top 20)",
       "type": "barchart",
       "targets": [
         {
@@ -387,21 +367,97 @@
           },
           "expr": "topk(20, glerp:longhorn_namespace_usage_bytes)",
           "instant": true,
-          "legendFormat": "{{ claimnamespace }} (Used)",
+          "legendFormat": "{{ claimnamespace }}",
           "refId": "A"
+        }
+      ],
+      "description": "Actual Longhorn block storage consumed per namespace, ranked highest to lowest. Use this to spot which tenants/workloads dominate block storage. (Capacity is not overlaid \u2014 Grafana bar charts cannot draw a per-bar target marker; see the Capacity Planning dashboard for usage-vs-allocated projections.)"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#77C5D5"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "#27B093",
+                "value": null
+              },
+              {
+                "color": "#f0d349",
+                "value": 70
+              },
+              {
+                "color": "#e04b4b",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "bytes"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 12,
+        "h": 10
+      },
+      "id": 8,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 200
+      },
+      "title": "MinIO Used by Namespace (Top 20)",
+      "type": "barchart",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(20, glerp:longhorn_namespace_provisioned_bytes)",
+          "expr": "topk(20, sum by (namespace)(minio_cluster_usage_total_bytes))",
           "instant": true,
-          "legendFormat": "{{ claimnamespace }} (Provisioned)",
-          "refId": "B"
+          "legendFormat": "{{ namespace }}",
+          "refId": "A"
         }
       ],
-      "description": "Actual bytes consumed by Longhorn volumes per namespace. The green bar shows actual disk usage; the gray bar shows provisioned (requested) capacity.\n\n**Why actual usage can exceed provisioned:** Longhorn stores multiple replicas of each volume (default 3\u00d7). The actual bytes on disk = logical data \u00d7 replica count + snapshot overhead. A volume provisioned at 10 GiB with 3 replicas will consume ~30 GiB of raw node storage. Additionally, Longhorn snapshots grow over time as data changes. Provisioned capacity reflects what Kubernetes sees; actual usage reflects real disk consumption."
+      "description": "Object storage (MinIO) consumed per namespace, ranked highest to lowest. Parallels the Longhorn ranking so you can compare block vs object storage heavy hitters."
     },
     {
       "collapsed": false,
@@ -411,8 +467,8 @@
         "x": 0,
         "y": 16
       },
-      "id": 30,
-      "title": "Storage Distribution",
+      "id": 9,
+      "title": "Storage Share by Namespace",
       "type": "row"
     },
     {
@@ -438,12 +494,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 12,
         "x": 0,
-        "y": 17
+        "y": 17,
+        "w": 12,
+        "h": 10
       },
-      "id": 31,
+      "id": 10,
       "options": {
         "displayLabels": [
           "name",
@@ -501,12 +557,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 12,
         "x": 12,
-        "y": 17
+        "y": 17,
+        "w": 12,
+        "h": 10
       },
-      "id": 32,
+      "id": 11,
       "options": {
         "displayLabels": [
           "name",
@@ -549,14 +605,14 @@
         "x": 0,
         "y": 27
       },
-      "id": 40,
-      "title": "Storage Utilization Over Time",
+      "id": 12,
+      "title": "Growth Over Time by Namespace",
       "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${vm_datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -575,12 +631,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 12,
         "x": 0,
-        "y": 28
+        "y": 28,
+        "w": 12,
+        "h": 10
       },
-      "id": 41,
+      "id": 13,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -598,7 +654,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${vm_datasource}"
           },
           "expr": "glerp:longhorn_namespace_usage_bytes > 0",
           "legendFormat": "{{ claimnamespace }}"
@@ -608,7 +664,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "${vm_datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -627,12 +683,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 12,
         "x": 12,
-        "y": 28
+        "y": 28,
+        "w": 12,
+        "h": 10
       },
-      "id": 42,
+      "id": 14,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -650,219 +706,12 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "${vm_datasource}"
           },
           "expr": "sum by (namespace)(minio_cluster_usage_total_bytes) > 0",
           "legendFormat": "{{ namespace }}"
         }
       ]
-    },
-    {
-      "collapsed": false,
-      "description": "Per-drive DirectPV storage breakdown for the selected namespace. Select a namespace above to filter to that tenant's drives.",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 38
-      },
-      "id": 50,
-      "title": "DirectPV Storage \u2014 $namespace",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "DirectPV drives allocated to PVCs in the selected namespace. Each row is one physical drive on one node. Use this view to identify which node needs capacity added.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#27B093",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "% Used"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background",
-                  "mode": "gradient"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "#27B093",
-                      "value": null
-                    },
-                    {
-                      "color": "#f5a623",
-                      "value": 70
-                    },
-                    {
-                      "color": "#e02f44",
-                      "value": 85
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "max",
-                "value": 100
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "(Capacity|Used|Free)"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 39
-      },
-      "id": 51,
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "displayName": "% Used",
-            "desc": true
-          }
-        ],
-        "footer": {
-          "show": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "directpv_stats_bytes_total * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
-          "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
-          "instant": true,
-          "format": "table",
-          "refId": "Allocated"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "directpv_stats_bytes_used * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
-          "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
-          "instant": true,
-          "format": "table",
-          "refId": "Used"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "(directpv_stats_bytes_total - directpv_stats_bytes_used) * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
-          "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
-          "instant": true,
-          "format": "table",
-          "refId": "Free"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "directpv_stats_bytes_used / directpv_stats_bytes_total * 100 * on(volumeID) group_left(persistentvolumeclaim, namespace) label_replace(kube_persistentvolumeclaim_info{storageclass=\"directpv-min-io\", namespace=\"$namespace\"}, \"volumeID\", \"$1\", \"volumename\", \"(.+)\")",
-          "legendFormat": "{{node}} | {{persistentvolumeclaim}}",
-          "instant": true,
-          "format": "table",
-          "refId": "PctUsed"
-        }
-      ],
-      "title": "DirectPV PVC Breakdown \u2014 $namespace",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "renameByName": {
-              "node": "Node",
-              "persistentvolumeclaim": "PVC",
-              "Value #Allocated": "Allocated",
-              "Value #Used": "Used",
-              "Value #Free": "Free",
-              "Value #PctUsed": "% Used"
-            },
-            "excludeByName": {
-              "Time": true,
-              "job": true,
-              "__name__": true,
-              "instance": true,
-              "container": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "service": true,
-              "volumeID": true,
-              "exported_node": true
-            },
-            "indexByName": {
-              "Node": 0,
-              "PVC": 1,
-              "Allocated": 2,
-              "Used": 3,
-              "Free": 4,
-              "% Used": 5
-            }
-          }
-        }
-      ],
-      "type": "table"
     }
   ],
   "refresh": "5m",
@@ -888,24 +737,16 @@
       },
       {
         "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(minio_cluster_usage_total_bytes, namespace)",
-        "hide": 0,
+        "hide": 2,
         "includeAll": false,
-        "label": "Namespace",
+        "label": "Long-term (VictoriaMetrics)",
         "multi": false,
-        "name": "namespace",
+        "name": "vm_datasource",
         "options": [],
-        "query": {
-          "query": "label_values(minio_cluster_usage_total_bytes, namespace)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "sort": 1,
-        "type": "query"
+        "query": "prometheus",
+        "regex": "GLerp.*VictoriaMetrics",
+        "refresh": 1,
+        "type": "datasource"
       }
     ]
   },
