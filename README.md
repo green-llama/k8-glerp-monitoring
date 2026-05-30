@@ -23,13 +23,22 @@ Designed for RKE2 clusters running Rancher Monitoring (kube-prometheus-stack).
   helm repo add green-llama https://green-llama.github.io/helm-charts/
   helm repo update
   ```
-- A Kubernetes Secret containing your SMTP password — create this **before** installing the chart:
+- A Kubernetes namespace and SMTP secret — create these **before** installing the chart:
   ```bash
+  # Create the namespace (the chart does not manage it — this protects the
+  # VictoriaMetrics PVC from accidental deletion on helm uninstall)
+  kubectl create namespace glerp-monitoring
+
+  # SMTP secret for AlertManager email delivery
   kubectl create secret generic alertmanager-smtp-secret \
-    --namespace cattle-monitoring-system \
+    --namespace glerp-monitoring \
     --from-literal=smtp_auth_password='YOUR_APP_PASSWORD'
   ```
   > If using Gmail with 2-Step Verification, use a Google App Password (Google Account → Security → App Passwords), not your login password. The `from:` address must match `authUsername:` exactly, or be a verified "Send mail as" alias.
+
+  > **If the namespace already exists** (e.g. from a previous install attempt) and you get
+  > an ownership conflict error, `--create-namespace` on the install command will skip it
+  > safely — no annotation step needed since the chart no longer manages the namespace.
 
 ---
 
@@ -37,7 +46,7 @@ Designed for RKE2 clusters running Rancher Monitoring (kube-prometheus-stack).
 
 ### Step 1 — Install the chart
 
-Create a values override file (`glerp-monitoring-values.yaml`) — do not pass secrets via `--set`:
+Create a values override file (`cluster-values.yaml`) — do not pass secrets via `--set`:
 
 ```yaml
 cluster:
@@ -59,10 +68,12 @@ alertmanager:
 Then install:
 
 ```bash
-helm install glerp-monitoring green-llama/glerp-monitoring \
-  --namespace cattle-monitoring-system \
-  --values glerp-monitoring-values.yaml
+helm upgrade --install glerp-monitoring green-llama/glerp-monitoring \
+  --namespace glerp-monitoring --create-namespace \
+  --values cluster-values.yaml --wait
 ```
+
+> `--create-namespace` is a safe no-op if the namespace already exists.
 
 ### Step 2 — Wire up Prometheus scrape jobs and remote write
 

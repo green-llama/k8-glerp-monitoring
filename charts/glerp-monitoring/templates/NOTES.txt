@@ -1,4 +1,25 @@
-GLerp Monitoring v2 deployed to namespace {{ .Values.namespace }}.
+GLerp Monitoring v2.1.10 deployed to namespace {{ .Values.namespace }}.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTALL — Namespace and secrets (before helm install)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # Create the namespace (or use --create-namespace on the helm install command)
+  kubectl create namespace {{ .Values.namespace }}
+
+  # Pre-create the SMTP secret (required before install)
+  kubectl create secret generic {{ .Values.alertmanager.email.passwordSecret.name }} \
+    --namespace {{ .Values.namespace }} \
+    --from-literal={{ .Values.alertmanager.email.passwordSecret.key }}='YOUR_SMTP_PASSWORD'
+
+  # Install
+  helm upgrade --install {{ .Release.Name }} green-llama/glerp-monitoring \
+    --namespace {{ .Values.namespace }} --create-namespace \
+    --values cluster-values.yaml --wait
+
+  NOTE: --create-namespace safely skips creation if the namespace already exists.
+  The namespace is intentionally NOT managed by this chart so the VictoriaMetrics
+  PVC survives helm uninstall.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REQUIRED — Update Rancher Monitoring remoteWrite (one-time)
@@ -17,14 +38,6 @@ In Rancher UI → Apps → rancher-monitoring → Edit → paste into YAML:
       additionalScrapeConfigs:
         name: {{ .Release.Name }}-scrape-configs
         key: additional-scrape-configs.yaml
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REQUIRED — Pre-create the SMTP secret
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  kubectl create secret generic {{ .Values.alertmanager.email.passwordSecret.name }} \
-    --namespace {{ .Values.namespace }} \
-    --from-literal={{ .Values.alertmanager.email.passwordSecret.key }}='YOUR_SMTP_PASSWORD'
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OPTIONAL — Telegram alerts

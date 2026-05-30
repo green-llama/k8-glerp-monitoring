@@ -89,7 +89,8 @@ alertmanager:
 ## Step 2 — Pre-create secrets in new namespace
 
 ```bash
-# Create the namespace first (chart will also create it, but secrets must exist at install time)
+# Create the namespace (the chart does NOT manage it — this protects the
+# VictoriaMetrics PVC from deletion on helm uninstall, and avoids ownership conflicts)
 kubectl create namespace glerp-monitoring --request-timeout=5s
 
 # SMTP secret (REQUIRED)
