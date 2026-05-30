@@ -87,3 +87,16 @@ spec:
                 storageclass=~"longhorn.*|directpv.*"
               }
             )
+
+    # ── DirectPV per-node aggregation (for capacity-planning projections) ──────
+    # directpv_stats_bytes_used carries label `node`; the capacity CRD metric
+    # carries `node` + `drive`. The Capacity Planning dashboard needs one usage
+    # and one capacity series per node so it can deriv() the growth rate against
+    # VictoriaMetrics. These instantaneous aggregations forward to VM via glerp:.*.
+    - name: glerp.storage.directpv
+      interval: 60s
+      rules:
+        - record: glerp:directpv_node_usage_bytes
+          expr: sum by (node) (directpv_stats_bytes_used)
+        - record: glerp:directpv_node_capacity_bytes
+          expr: sum by (node) (kube_customresource_directpv_drive_total_capacity_bytes)

@@ -4,7 +4,7 @@
   "annotations": {
     "list": []
   },
-  "description": "90-day storage growth trends, capacity headroom, and fill projections",
+  "description": "Time-to-attention projections across all storage planes, plus current headroom and forecasts.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -33,7 +33,564 @@
         "y": 0
       },
       "id": 1,
-      "title": "Capacity Headroom",
+      "title": "Attention Summary \u2014 soonest object per storage plane",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "The Longhorn Node object projected to reach 80% soonest, and in how many days. Driven by the selected growth window against VictoriaMetrics. '3yr+' = beyond the 3-year planning horizon.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1094,
+                "to": 1096,
+                "result": {
+                  "text": "3yr+"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#e04b4b",
+                "value": null
+              },
+              {
+                "color": "#f0d349",
+                "value": 30
+              },
+              {
+                "color": "#27B093",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "d"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "title": "Longhorn Node",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "bottomk(1, sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((longhorn_node_storage_capacity_bytes * 0.80 - longhorn_node_storage_usage_bytes) / clamp_min(deriv(longhorn_node_storage_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")))",
+          "instant": true,
+          "legendFormat": "{{ object_name }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "The MinIO Tenant object projected to reach 80% soonest, and in how many days. Driven by the selected growth window against VictoriaMetrics. '3yr+' = beyond the 3-year planning horizon.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1094,
+                "to": 1096,
+                "result": {
+                  "text": "3yr+"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#e04b4b",
+                "value": null
+              },
+              {
+                "color": "#f0d349",
+                "value": 30
+              },
+              {
+                "color": "#27B093",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "d"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "title": "MinIO Tenant",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "bottomk(1, sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((minio_cluster_capacity_usable_total_bytes * 0.80 - minio_cluster_usage_total_bytes) / clamp_min(deriv(minio_cluster_usage_total_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")))",
+          "instant": true,
+          "legendFormat": "{{ object_name }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "The DirectPV Node object projected to reach 80% soonest, and in how many days. Driven by the selected growth window against VictoriaMetrics. '3yr+' = beyond the 3-year planning horizon.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1094,
+                "to": 1096,
+                "result": {
+                  "text": "3yr+"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#e04b4b",
+                "value": null
+              },
+              {
+                "color": "#f0d349",
+                "value": 30
+              },
+              {
+                "color": "#27B093",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "d"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "title": "DirectPV Node",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "bottomk(1, sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((glerp:directpv_node_capacity_bytes * 0.80 - glerp:directpv_node_usage_bytes) / clamp_min(deriv(glerp:directpv_node_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")))",
+          "instant": true,
+          "legendFormat": "{{ object_name }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "The Node Filesystem object projected to reach 80% soonest, and in how many days. Driven by the selected growth window against VictoriaMetrics. '3yr+' = beyond the 3-year planning horizon.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1094,
+                "to": 1096,
+                "result": {
+                  "text": "3yr+"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#e04b4b",
+                "value": null
+              },
+              {
+                "color": "#f0d349",
+                "value": 30
+              },
+              {
+                "color": "#27B093",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "d"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "title": "Node Filesystem",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "bottomk(1, sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} - 0.20 * node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}) / clamp_min(-deriv(node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"instance\", \"(.+)\")))",
+          "instant": true,
+          "legendFormat": "{{ object_name }}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 6,
+      "title": "Storage Objects Ranked by Time to Attention",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "Every storage object across all planes, ranked by projected days until it reaches 80% of capacity. Growth rate is computed over the selected window against VictoriaMetrics (90-day store). Red <30d, orange <90d, green beyond. '3yr+' means the object is not on a trajectory that warrants attention. Sparse until enough history accumulates \u2014 set the growth window to 7d to validate sooner.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Type"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Object"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 240
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Days to Threshold"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "d"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "range",
+                    "options": {
+                      "from": 1094,
+                      "to": 1096,
+                      "result": {
+                        "text": "3yr+"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#e04b4b",
+                      "value": null
+                    },
+                    {
+                      "color": "#f0d349",
+                      "value": 30
+                    },
+                    {
+                      "color": "#27B093",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#27B093",
+                      "value": null
+                    },
+                    {
+                      "color": "#f0d349",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "#e04b4b",
+                      "value": 0.8
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Days to Threshold",
+            "desc": false
+          }
+        ]
+      },
+      "title": "Storage Objects Ranked by Time to Attention",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((longhorn_node_storage_capacity_bytes * 0.80 - longhorn_node_storage_usage_bytes) / clamp_min(deriv(longhorn_node_storage_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((minio_cluster_capacity_usable_total_bytes * 0.80 - minio_cluster_usage_total_bytes) / clamp_min(deriv(minio_cluster_usage_total_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((glerp:directpv_node_capacity_bytes * 0.80 - glerp:directpv_node_usage_bytes) / clamp_min(deriv(glerp:directpv_node_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} - 0.20 * node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}) / clamp_min(-deriv(node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"instance\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((sum by (namespace)(glerp:storage_quota_gi) * 1073741824 * 0.80 - sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\"))) / clamp_min(sum by (namespace)(label_replace(deriv(glerp:longhorn_namespace_usage_bytes[$growth_window]), \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) * 86400, 1), 0), 1095), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (object_type, object_name) (label_replace(label_replace(longhorn_node_storage_usage_bytes / longhorn_node_storage_capacity_bytes, \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(minio_cluster_usage_total_bytes / minio_cluster_capacity_usable_total_bytes, \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(glerp:directpv_node_usage_bytes / glerp:directpv_node_capacity_bytes, \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}, \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"instance\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) / (sum by (namespace)(glerp:storage_quota_gi) * 1073741824), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "object_type": "Type",
+              "object_name": "Object",
+              "Value #A": "Days to Threshold",
+              "Value #B": "Current %"
+            },
+            "indexByName": {
+              "object_type": 0,
+              "object_name": 1,
+              "Value #A": 2,
+              "Value #B": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 8,
+      "title": "Current Headroom",
       "type": "row"
     },
     {
@@ -71,12 +628,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
+        "h": 7,
+        "w": 12,
         "x": 0,
-        "y": 1
+        "y": 19
       },
-      "id": 2,
+      "id": 9,
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
@@ -133,12 +690,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 0,
-        "y": 9
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 19
       },
-      "id": 3,
+      "id": 10,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -193,12 +750,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 8,
-        "y": 9
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 19
       },
-      "id": 4,
+      "id": 11,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -228,83 +785,15 @@
       ]
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#e04b4b",
-                "value": null
-              },
-              {
-                "color": "#f0d349",
-                "value": 30
-              },
-              {
-                "color": "#27B093",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "d",
-          "noValue": "\u221e"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 16,
-        "y": 9
-      },
-      "id": 5,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "title": "Days Until First Longhorn Node Hits 85%",
-      "type": "stat",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "min(\n  (\n    longhorn_node_storage_capacity_bytes * 0.85\n    - longhorn_node_storage_usage_bytes\n  )\n  /\n  clamp_min(\n    deriv(longhorn_node_storage_usage_bytes[7d]) * 86400,\n    1\n  )\n) > 0",
-          "instant": true,
-          "legendFormat": "Days"
-        }
-      ]
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 26
       },
-      "id": 10,
-      "title": "90-Day Longhorn Growth (VictoriaMetrics)",
+      "id": 12,
+      "title": "Forecast \u2014 usage trajectory + 30-day projection",
       "type": "row"
     },
     {
@@ -312,72 +801,77 @@
         "type": "prometheus",
         "uid": "${vm_datasource}"
       },
+      "description": "Actual node usage (solid) with the predict_linear(+30d) projected value (dashed) and the 80% threshold (dotted). When the dashed line approaches the dotted line, attention is warranted soon.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 15,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "fillOpacity": 8,
+            "showPoints": "never"
           },
           "unit": "bytes"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*\\+30d.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*80% threshold.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dot",
+                  "dash": [
+                    2,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e04b4b"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "h": 9,
+        "w": 12,
         "x": 0,
-        "y": 14
+        "y": 27
       },
-      "id": 11,
+      "id": 13,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
+          "displayMode": "list",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
@@ -385,7 +879,7 @@
           "sort": "desc"
         }
       },
-      "title": "Longhorn Node Storage Usage \u2014 90d Trend",
+      "title": "Longhorn Node \u2014 usage & projection",
       "type": "timeseries",
       "targets": [
         {
@@ -394,92 +888,104 @@
             "uid": "${vm_datasource}"
           },
           "expr": "longhorn_node_storage_usage_bytes",
-          "legendFormat": "{{ node }}"
+          "legendFormat": "{{ node }} usage",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "predict_linear(longhorn_node_storage_usage_bytes[$growth_window], 86400*30)",
+          "legendFormat": "{{ node }} +30d",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "longhorn_node_storage_capacity_bytes * 0.80",
+          "legendFormat": "{{ node }} 80% threshold",
+          "refId": "C"
         }
       ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 24
-      },
-      "id": 20,
-      "title": "90-Day MinIO Growth (VictoriaMetrics)",
-      "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${vm_datasource}"
       },
+      "description": "Actual namespace usage (solid) with the predict_linear(+30d) projected value (dashed) and the 80% threshold (dotted). When the dashed line approaches the dotted line, attention is warranted soon.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 15,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "fillOpacity": 8,
+            "showPoints": "never"
           },
           "unit": "bytes"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*\\+30d.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*80% threshold.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dot",
+                  "dash": [
+                    2,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e04b4b"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 12,
-        "x": 0,
-        "y": 25
+        "x": 12,
+        "y": 27
       },
-      "id": 21,
+      "id": 14,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
@@ -488,7 +994,7 @@
           "sort": "desc"
         }
       },
-      "title": "MinIO Usage per Tenant \u2014 90d Trend",
+      "title": "MinIO Tenant \u2014 usage & projection",
       "type": "timeseries",
       "targets": [
         {
@@ -497,98 +1003,26 @@
             "uid": "${vm_datasource}"
           },
           "expr": "minio_cluster_usage_total_bytes",
-          "legendFormat": "{{ namespace }}"
-        }
-      ]
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${vm_datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 15,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percentunit"
+          "legendFormat": "{{ namespace }} usage",
+          "refId": "A"
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 25
-      },
-      "id": 22,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "title": "MinIO Usage % per Tenant \u2014 90d Trend",
-      "type": "timeseries",
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "minio_cluster_usage_total_bytes / minio_cluster_capacity_usable_total_bytes",
-          "legendFormat": "{{ namespace }}"
+          "expr": "predict_linear(minio_cluster_usage_total_bytes[$growth_window], 86400*30)",
+          "legendFormat": "{{ namespace }} +30d",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "minio_cluster_capacity_usable_total_bytes * 0.80",
+          "legendFormat": "{{ namespace }} 80% threshold",
+          "refId": "C"
         }
       ]
     },
@@ -596,169 +1030,12 @@
       "collapsed": false,
       "gridPos": {
         "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 35
-      },
-      "id": 30,
-      "title": "Customer Growth Rate Table",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Current Usage"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "30d Growth"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Daily Rate"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "Bps"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 10,
         "w": 24,
         "x": 0,
         "y": 36
       },
-      "id": 31,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "30d Growth"
-          }
-        ]
-      },
-      "title": "Longhorn Growth Rate by Namespace (30d)",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "renameByName": {
-              "Value #current": "Current Usage",
-              "Value #growth": "30d Growth",
-              "Value #rate": "Daily Rate",
-              "claimnamespace": "Namespace"
-            }
-          }
-        }
-      ],
-      "type": "table",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "glerp:longhorn_namespace_usage_bytes",
-          "instant": true,
-          "legendFormat": "{{ claimnamespace }}",
-          "refId": "current"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "glerp:longhorn_namespace_usage_bytes - glerp:longhorn_namespace_usage_bytes offset 30d",
-          "instant": true,
-          "legendFormat": "{{ claimnamespace }}",
-          "refId": "growth"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "deriv(glerp:longhorn_namespace_usage_bytes[30d]) ",
-          "instant": true,
-          "legendFormat": "{{ claimnamespace }}",
-          "refId": "rate"
-        }
-      ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 46
-      },
-      "id": 40,
-      "title": "90-Day Node Filesystem Trends (VictoriaMetrics)",
+      "id": 15,
+      "title": "How projections work",
       "type": "row"
     },
     {
@@ -766,113 +1043,19 @@
         "type": "prometheus",
         "uid": "${vm_datasource}"
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 15,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "line",
-              "steps": [
-                {
-                  "color": "transparent",
-                  "value": null
-                },
-                {
-                  "color": "#f0d349",
-                  "value": 0.8
-                },
-                {
-                  "color": "#e04b4b",
-                  "value": 0.9
-                }
-              ]
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "#f0d349",
-                "value": 0.8
-              },
-              {
-                "color": "#e04b4b",
-                "value": 0.9
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 10,
+        "h": 7,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 37
       },
-      "id": 41,
+      "id": 16,
       "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "mode": "markdown",
+        "content": "### Reading this dashboard\n\n**Time to Attention** = projected days until an object reaches **80%** of its capacity, computed as `(0.80\u00b7capacity \u2212 usage) \u00f7 daily_growth`. Daily growth is the `deriv()` of usage over the **$growth_window** window, evaluated against **VictoriaMetrics** (90-day retention).\n\n- **Projections need history.** A 14-day window needs ~14 days of accumulated data to be meaningful. Right after a fresh VictoriaMetrics start, set the window to **7d** to get earlier (noisier) estimates.\n- **Linear extrapolation.** Assumes recent growth continues at a constant rate \u2014 a planning aid, not a guarantee. Bursty workloads will swing.\n- **`3yr+`** means the object is projected to take more than 3 years (1095 days) \u2014 effectively not a concern.\n- **Flat or shrinking** objects are floored to a 1 byte/day growth, so they land at `3yr+`.\n\n**Thresholds:** the 80% warning level here is a dashboard constant. It is independent of the `alerts.*WarningPct` values in `values.yaml` (storage dashboards are delivered as raw JSON and cannot read Helm values). Keep them aligned if you change the alert thresholds.\n\n**Planes covered:** Longhorn nodes, MinIO tenants, DirectPV nodes, node root filesystems, and customer Longhorn soft-cap quotas (the Customer Quota rows appear only once a customer has `quotaGi.longhorn` set)."
       },
-      "title": "Node Filesystem Usage % \u2014 90d Trend (excl. tmpfs)",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${vm_datasource}"
-          },
-          "expr": "1 - (node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"})",
-          "legendFormat": "{{ instance }} /"
-        }
-      ]
+      "title": "Methodology & caveats",
+      "type": "text"
     }
   ],
   "refresh": "5m",
@@ -913,11 +1096,42 @@
         "regex": "GLerp.*VictoriaMetrics",
         "refresh": 1,
         "type": "datasource"
+      },
+      {
+        "name": "growth_window",
+        "label": "Growth window",
+        "type": "custom",
+        "query": "7d,14d,30d",
+        "current": {
+          "selected": true,
+          "text": "14d",
+          "value": "14d"
+        },
+        "options": [
+          {
+            "text": "7d",
+            "value": "7d",
+            "selected": false
+          },
+          {
+            "text": "14d",
+            "value": "14d",
+            "selected": true
+          },
+          {
+            "text": "30d",
+            "value": "30d",
+            "selected": false
+          }
+        ],
+        "includeAll": false,
+        "multi": false,
+        "hide": 0
       }
     ]
   },
   "time": {
-    "from": "now-90d",
+    "from": "now-30d",
     "to": "now"
   },
   "timepicker": {},

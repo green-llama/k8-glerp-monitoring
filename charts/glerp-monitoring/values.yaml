@@ -192,6 +192,23 @@ customers: []
 #    minio:
 #      enabled: true           # false if no MinIO Tenant in this namespace
 
+# ── Capacity planning predictive alerts (FUTURE — not yet implemented) ─────────
+# The Capacity Planning & Growth dashboard already shows projected days-to-threshold
+# per storage object. This stub reserves the config shape for a future predictive
+# ALERT (fires when an object is projected to hit its threshold within N days).
+# It is NOT wired to any template yet — see README "Future Enhancement: Predictive
+# Capacity Alerts" for the implementation blueprint. Leave commented until built.
+# capacityPlanning:
+#   predictiveAlerts:
+#     enabled: false
+#     # Per-plane overrides — alert when projected days-to-threshold drops below `days`.
+#     planes:
+#       longhornNode:    { enabled: false, days: 30, severity: warning }
+#       minioTenant:     { enabled: false, days: 30, severity: warning }
+#       directpvNode:    { enabled: false, days: 30, severity: warning }
+#       nodeFilesystem:  { enabled: false, days: 30, severity: warning }
+#       customerQuota:   { enabled: false, days: 14, severity: critical }  # e.g. customer DB space
+
 # ── Security scanning ─────────────────────────────────────────────────────────
 # PriorityClass for scan jobs — preempted first under node pressure.
 scanPriorityClassName: "glerp-scan-low"

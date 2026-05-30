@@ -463,6 +463,63 @@ live rancher-monitoring configuration.
 
 ---
 
+## Capacity Planning & Growth dashboard
+
+The `GLerp Storage — Capacity Planning & Growth` dashboard answers one question: **which storage
+object needs attention next, and in how many days?** It ranks every object across all storage
+planes (Longhorn nodes, MinIO tenants, DirectPV nodes, node root filesystems, and customer
+Longhorn soft-cap quotas) by projected days until it reaches 80% of capacity.
+
+**How the projection works.** For each object:
+`days = (0.80·capacity − usage) ÷ daily_growth`, where `daily_growth` is the `deriv()` of usage
+over the selected **growth window** (`$growth_window`: 7d / 14d / 30d, default 14d). Because the
+math needs more history than Prometheus retains (7d), **all projection queries run against the
+VictoriaMetrics datasource** (90-day store). Values are capped at 1095 days and shown as `3yr+`.
+
+**Requirement — DirectPV helper rules.** The DirectPV plane uses two recording rules
+(`glerp:directpv_node_usage_bytes`, `glerp:directpv_node_capacity_bytes`) that aggregate
+per-drive metrics to one series per node. They depend on the DirectPV CRD metrics — make sure the
+kube-state-metrics CustomResourceState step above ("Enable DirectPV Physical Drive Capacity
+Metrics") is applied, or the DirectPV rows stay empty.
+
+**Note on thresholds.** The 80% warning level is a constant baked into the dashboard JSON
+(storage dashboards are delivered as raw JSON via `.Files.Get` and cannot read Helm values). If
+you change `alerts.*WarningPct` in `values.yaml`, update the dashboard constants to match.
+
+### Future Enhancement: Predictive Capacity Alerts
+
+Today the projection is **visual only**. A natural follow-on is a predictive *alert* that fires
+when any object is projected to hit its threshold within N days — configurable per plane (e.g.
+customer database space could alert at `critical` with a 14-day horizon while node filesystems
+alert at `warning` with 30 days). A disabled config stub is reserved in `values.yaml` under
+`capacityPlanning.predictiveAlerts`.
+
+**Why it is not built yet:** Prometheus retains only 7 days, so the alert cannot reuse the
+dashboard's 14-day VictoriaMetrics projection. It needs its own computation path.
+
+**Implementation blueprint:**
+1. In `templates/prometheusrule-recording-storage.yaml`, add a group
+   `glerp.storage.capacity_forecast` with a `glerp:capacity_days_to_threshold_7d` recording rule
+   per plane — the same formula as the dashboard but a hardcoded `[7d]` window (within Prometheus
+   retention) and the same `label_replace` to `{object_type, object_name}`. These forward to
+   VictoriaMetrics via the existing `glerp:.*` remoteWrite filter.
+2. Add `templates/prometheusrule-alerts-capacity.yaml` with one alert per plane, gated on
+   `.Values.capacityPlanning.predictiveAlerts.enabled` AND the per-plane `enabled` flag:
+   ```yaml
+   - alert: CapacityThresholdApproaching
+     expr: glerp:capacity_days_to_threshold_7d{object_type="MinIO Tenant"} < <days>
+     for: 6h
+     labels: { severity: <severity>, alert_type: storage }
+     annotations:
+       summary: "{{ $labels.object_name }} ({{ $labels.object_type }}) projected to hit 80% in {{ $value | humanize }}d"
+   ```
+   Uncomment the `values.yaml` stub to drive thresholds/severity. The unified AlertmanagerConfig
+   already routes `alert_type: storage`, so no receiver changes are needed.
+3. Optionally surface the 7d figure as a second column on the dashboard for comparison with the
+   longer-window projection.
+
+---
+
 ## License
 
 Internal use — Green Llama Technologies.
