@@ -450,10 +450,10 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "${vm_datasource}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
-      "description": "Every storage object across all planes, ranked by projected days until it reaches 80% of capacity. Growth rate is computed over the selected window against VictoriaMetrics (90-day store). Red <30d, orange <90d, green beyond. '3yr+' means the object is not on a trajectory that warrants attention. Sparse until enough history accumulates \u2014 set the growth window to 7d to validate sooner.",
+      "description": "Every storage object across all planes, ranked by projected days until it reaches 80% of capacity. Days to Threshold is projected over the selected window against VictoriaMetrics (needs history). Current % is read live from Prometheus, so it appears immediately even before long-term data accrues. Red <30d, orange <90d, green beyond. '3yr+' means the object is not on a trajectory that warrants attention.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -626,7 +626,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${vm_datasource}"
+            "uid": "${datasource}"
           },
           "expr": "sum by (object_type, object_name) (label_replace(label_replace(longhorn_node_storage_usage_bytes / longhorn_node_storage_capacity_bytes, \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes, \"object_type\", \"PVC Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"persistentvolumeclaim\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(minio_cluster_usage_total_bytes / minio_cluster_capacity_usable_total_bytes, \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(glerp:directpv_node_usage_bytes / glerp:directpv_node_capacity_bytes, \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}, \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"instance\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) / (sum by (namespace)(glerp:storage_quota_gi) * 1073741824), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
           "format": "table",
