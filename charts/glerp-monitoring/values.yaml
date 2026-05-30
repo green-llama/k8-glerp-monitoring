@@ -51,7 +51,7 @@ grafana:
 #     - url: http://<release-name>-victoriametrics.<namespace>.svc:8428/api/v1/write
 #       writeRelabelConfigs:
 #         - sourceLabels: [__name__]
-#           regex: "node_filesystem.*|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
+#           regex: "node_filesystem.*|longhorn.*|minio.*|directpv.*|kube_customresource_directpv.*|kube_persistentvolume.*|kube_persistentvolumeclaim.*|kubelet_volume_stats.*|glerp:.*|probe_.*|glerp_maintenance.*|trivy_.*|kube_bench_.*|zap_.*"
 #           action: keep
 #
 # This filter prevents VictoriaMetrics from receiving all cluster metrics.

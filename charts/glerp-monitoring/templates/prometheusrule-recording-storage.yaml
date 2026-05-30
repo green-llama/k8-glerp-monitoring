@@ -43,8 +43,23 @@ spec:
         - record: glerp:longhorn_cluster_capacity_bytes
           expr: sum(longhorn_node_storage_capacity_bytes)
 
+        # Schedulable Longhorn space remaining. Longhorn metric naming varies by
+        # version, so fall back gracefully: try the reservable metric, then
+        # capacity − usage − reservation, then plain capacity − usage (free).
         - record: glerp:longhorn_cluster_reservable_bytes
-          expr: sum(longhorn_node_storage_reservable_bytes)
+          expr: |
+            sum(longhorn_node_storage_reservable_bytes)
+            or
+            (
+              sum(longhorn_node_storage_capacity_bytes)
+              - sum(longhorn_node_storage_usage_bytes)
+              - sum(longhorn_node_storage_reservation_bytes)
+            )
+            or
+            (
+              sum(longhorn_node_storage_capacity_bytes)
+              - sum(longhorn_node_storage_usage_bytes)
+            )
 
         # Node-level utilization ratio (0–1) for threshold alerting.
         - record: glerp:longhorn_node_usage_ratio
