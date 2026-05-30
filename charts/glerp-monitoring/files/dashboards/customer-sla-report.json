@@ -422,7 +422,7 @@
   "time": { "from": "now-30d", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "GLerp — Customer SLA Report",
+  "title": "GLerp Uptime — Customer SLA Report",
   "uid": "glerp-customer-sla",
   "version": 2
 }

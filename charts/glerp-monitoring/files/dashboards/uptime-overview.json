@@ -461,7 +461,7 @@
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "GLerp — Uptime Overview",
+  "title": "GLerp Uptime — Cluster Overview",
   "uid": "glerp-uptime-overview",
   "version": 1
 }

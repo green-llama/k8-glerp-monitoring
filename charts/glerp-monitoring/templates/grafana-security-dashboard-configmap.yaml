@@ -437,8 +437,8 @@ data:
           "title": "ZAP Findings by Target & Risk Level",
           "type": "table",
           "targets": [
-            { "expr": "zap_alerts_total{job=\"zap\"} or vector(0)",          "legendFormat": "", "refId": "A", "instant": true, "format": "table" },
-            { "expr": "zap_alert_instances_total{job=\"zap\"} or vector(0)", "legendFormat": "", "refId": "B", "instant": true, "format": "table" }
+            { "expr": "sum by (target, risk) (zap_alerts_total{job=\"zap\"})",          "legendFormat": "", "refId": "A", "instant": true, "format": "table" },
+            { "expr": "sum by (target, risk) (zap_alert_instances_total{job=\"zap\"})", "legendFormat": "", "refId": "B", "instant": true, "format": "table" }
           ],
           "transformations": [
             { "id": "merge", "options": {} },
@@ -446,7 +446,17 @@ data:
               "id": "organize",
               "options": {
                 "renameByName": { "target": "Target", "risk": "Risk", "Value #A": "Alert Types", "Value #B": "Instances" },
-                "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true }
+                "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "container": true, "namespace": true, "pod": true, "service": true, "endpoint": true }
+              }
+            },
+            {
+              "id": "filterByValue",
+              "options": {
+                "type": "include",
+                "match": "all",
+                "filters": [
+                  { "fieldName": "Alert Types", "config": { "id": "greater", "options": { "value": 0 } } }
+                ]
               }
             }
           ]

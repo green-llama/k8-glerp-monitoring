@@ -428,7 +428,7 @@
   "time": { "from": "now-30d", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "GLerp — SLA Compliance",
+  "title": "GLerp Uptime — SLA Compliance",
   "uid": "glerp-sla-compliance",
   "version": 1
 }

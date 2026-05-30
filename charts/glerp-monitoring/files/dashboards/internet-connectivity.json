@@ -249,7 +249,7 @@
   "time": { "from": "now-30d", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "GLerp — Internet Connectivity",
+  "title": "GLerp Uptime — Internet Connectivity",
   "uid": "glerp-internet",
   "version": 1
 }
