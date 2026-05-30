@@ -453,7 +453,7 @@
         "type": "prometheus",
         "uid": "${vm_datasource}"
       },
-      "description": "Every storage object across all planes, ranked by projected days until it reaches 80% of capacity. Growth rate is computed over the selected window against VictoriaMetrics (90-day store). Current % shows live fill ratio. PVC Filesystem rows appear once kubelet_volume_stats.* accumulates in VictoriaMetrics (add kubelet_volume_stats.* to the remoteWrite filter \u2014 see NOTES). Red <30d, orange <90d, green beyond. '3yr+' means not on a concerning trajectory.",
+      "description": "Infrastructure storage objects ranked by projected days to 80% capacity. Growth rate over the selected window from VictoriaMetrics. Red <30d, orange <90d, green beyond. '3yr+' = not a near-term concern.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -474,7 +474,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 160
+                "value": 110
               }
             ]
           },
@@ -486,7 +486,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 240
+                "value": 160
               }
             ]
           },
@@ -543,7 +543,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 170
+                "value": 150
               }
             ]
           },
@@ -585,7 +585,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 130
+                "value": 110
               }
             ]
           }
@@ -593,7 +593,7 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 24,
+        "w": 14,
         "x": 0,
         "y": 7
       },
@@ -618,7 +618,7 @@
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((longhorn_node_storage_capacity_bytes * 0.80 - longhorn_node_storage_usage_bytes) / clamp_min(deriv(longhorn_node_storage_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((kubelet_volume_stats_capacity_bytes * 0.80 - kubelet_volume_stats_used_bytes) / clamp_min(deriv(kubelet_volume_stats_used_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"PVC Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"persistentvolumeclaim\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((minio_cluster_capacity_usable_total_bytes * 0.80 - minio_cluster_usage_total_bytes) / clamp_min(deriv(minio_cluster_usage_total_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((glerp:directpv_node_capacity_bytes * 0.80 - glerp:directpv_node_usage_bytes) / clamp_min(deriv(glerp:directpv_node_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min(((node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} - 0.20 * node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}) * on(instance) group_left(nodename) node_uname_info) / clamp_min((-deriv(node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}[$growth_window]) * 86400) * on(instance) group_left(nodename) node_uname_info, 1), 0), 1095), \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"nodename\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((sum by (namespace)(glerp:storage_quota_gi) * 1073741824 * 0.80 - sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\"))) / clamp_min(sum by (namespace)(label_replace(deriv(glerp:longhorn_namespace_usage_bytes[$growth_window]), \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) * 86400, 1), 0), 1095), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
+          "expr": "sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((longhorn_node_storage_capacity_bytes * 0.80 - longhorn_node_storage_usage_bytes) / clamp_min(deriv(longhorn_node_storage_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((minio_cluster_capacity_usable_total_bytes * 0.80 - minio_cluster_usage_total_bytes) / clamp_min(deriv(minio_cluster_usage_total_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((glerp:directpv_node_capacity_bytes * 0.80 - glerp:directpv_node_usage_bytes) / clamp_min(deriv(glerp:directpv_node_usage_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min(((node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} - 0.20 * node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}) * on(instance) group_left(nodename) node_uname_info) / clamp_min((-deriv(node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}[$growth_window]) * 86400) * on(instance) group_left(nodename) node_uname_info, 1), 0), 1095), \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"nodename\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((sum by (namespace)(glerp:storage_quota_gi) * 1073741824 * 0.80 - sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\"))) / clamp_min(sum by (namespace)(label_replace(deriv(glerp:longhorn_namespace_usage_bytes[$growth_window]), \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) * 86400, 1), 0), 1095), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -628,7 +628,7 @@
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "sum by (object_type, object_name) (label_replace(label_replace(longhorn_node_storage_usage_bytes / longhorn_node_storage_capacity_bytes, \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes, \"object_type\", \"PVC Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"persistentvolumeclaim\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(minio_cluster_usage_total_bytes / minio_cluster_capacity_usable_total_bytes, \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(glerp:directpv_node_usage_bytes / glerp:directpv_node_capacity_bytes, \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace((1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}) * on(instance) group_left(nodename) node_uname_info, \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"nodename\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) / (sum by (namespace)(glerp:storage_quota_gi) * 1073741824), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
+          "expr": "sum by (object_type, object_name) (label_replace(label_replace(longhorn_node_storage_usage_bytes / longhorn_node_storage_capacity_bytes, \"object_type\", \"Longhorn Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(minio_cluster_usage_total_bytes / minio_cluster_capacity_usable_total_bytes, \"object_type\", \"MinIO Tenant\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(glerp:directpv_node_usage_bytes / glerp:directpv_node_capacity_bytes, \"object_type\", \"DirectPV Node\", \"\", \"\"), \"object_name\", \"$1\", \"node\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace((1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\",mountpoint=\"/\"}) * on(instance) group_left(nodename) node_uname_info, \"object_type\", \"Node Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"nodename\", \"(.+)\")) or sum by (object_type, object_name) (label_replace(label_replace(sum by (namespace)(label_replace(glerp:longhorn_namespace_usage_bytes, \"namespace\", \"$1\", \"claimnamespace\", \"(.+)\")) / (sum by (namespace)(glerp:storage_quota_gi) * 1073741824), \"object_type\", \"Customer Quota\", \"\", \"\"), \"object_name\", \"$1\", \"namespace\", \"(.+)\"))",
           "format": "table",
           "instant": true,
           "refId": "B"
@@ -663,6 +663,207 @@
       ]
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${vm_datasource}"
+      },
+      "description": "Each Longhorn PVC ranked by projected days until its filesystem reaches 80% full. Uses kubelet_volume_stats (true filesystem fill \u2014 replica/snapshot-independent). Rows populate as kubelet_volume_stats.* accumulates in VictoriaMetrics. Red <30d, orange <90d, green beyond.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Object"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Days to Threshold"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "d"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "range",
+                    "options": {
+                      "from": 1094,
+                      "to": 1096,
+                      "result": {
+                        "text": "3yr+"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#e04b4b",
+                      "value": null
+                    },
+                    {
+                      "color": "#f0d349",
+                      "value": 30
+                    },
+                    {
+                      "color": "#27B093",
+                      "value": 90
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#27B093",
+                      "value": null
+                    },
+                    {
+                      "color": "#f0d349",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "#e04b4b",
+                      "value": 0.8
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 10,
+        "x": 14,
+        "y": 7
+      },
+      "id": 9,
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Days to Threshold",
+            "desc": false
+          }
+        ]
+      },
+      "title": "PVC Filesystem \u2014 Days to Threshold",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (object_type, object_name) (label_replace(label_replace(clamp_max(clamp_min((kubelet_volume_stats_capacity_bytes * 0.80 - kubelet_volume_stats_used_bytes) / clamp_min(deriv(kubelet_volume_stats_used_bytes[$growth_window]) * 86400, 1), 0), 1095), \"object_type\", \"PVC Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"persistentvolumeclaim\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${vm_datasource}"
+          },
+          "expr": "sum by (object_type, object_name) (label_replace(label_replace(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes, \"object_type\", \"PVC Filesystem\", \"\", \"\"), \"object_name\", \"$1\", \"persistentvolumeclaim\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "object_type": true
+            },
+            "renameByName": {
+              "object_name": "PVC",
+              "Value #A": "Days to Threshold",
+              "Value #B": "Current %",
+              "Value": "Days to Threshold"
+            },
+            "indexByName": {
+              "object_name": 0,
+              "Value #A": 1,
+              "Value #B": 2
+            }
+          }
+        }
+      ]
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -670,7 +871,7 @@
         "x": 0,
         "y": 18
       },
-      "id": 9,
+      "id": 10,
       "title": "Current Headroom",
       "type": "row"
     },
@@ -714,7 +915,7 @@
         "x": 0,
         "y": 19
       },
-      "id": 10,
+      "id": 11,
       "options": {
         "displayMode": "gradient",
         "orientation": "horizontal",
@@ -776,7 +977,7 @@
         "x": 12,
         "y": 19
       },
-      "id": 11,
+      "id": 12,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -836,7 +1037,7 @@
         "x": 18,
         "y": 19
       },
-      "id": 12,
+      "id": 13,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -866,83 +1067,12 @@
       ]
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Current filesystem fill % per PVC (from Prometheus, live \u2014 no history needed). Complements the ranked table which projects Days to Threshold from VictoriaMetrics. Empty if kubelet volume stats are not being scraped by Prometheus.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#27B093",
-                "value": null
-              },
-              {
-                "color": "#f0d349",
-                "value": 0.7
-              },
-              {
-                "color": "#e04b4b",
-                "value": 0.85
-              }
-            ]
-          },
-          "mappings": [],
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
-      "id": 13,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "textMode": "value_and_name",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "title": "Live PVC Fill Status (from Prometheus)",
-      "type": "stat",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes",
-          "instant": true,
-          "legendFormat": "{{ namespace }}/{{ persistentvolumeclaim }}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 26
       },
       "id": 14,
       "title": "Forecast \u2014 usage trajectory + 30-day projection",
@@ -1017,7 +1147,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 27
       },
       "id": 15,
       "options": {
@@ -1068,7 +1198,7 @@
         "type": "prometheus",
         "uid": "${vm_datasource}"
       },
-      "description": "Actual namespace usage (solid) with the predict_linear(+30d) projected value (dashed) and the 80% threshold (dotted). When the dashed line approaches the dotted line, attention is warranted soon.",
+      "description": "MinIO tenant usage (aggregated across all pods per namespace) with each tenant's usable capacity as a dashed ceiling line. When a solid usage line approaches its dashed quota, that tenant needs attention. With many tenants, the highest-usage ones dominate naturally.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1086,7 +1216,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".*\\+30d.*"
+              "options": ".*quota.*"
             },
             "properties": [
               {
@@ -1098,31 +1228,10 @@
                     10
                   ]
                 }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*80% threshold.*"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dot",
-                  "dash": [
-                    2,
-                    6
-                  ]
-                }
               },
               {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#e04b4b"
-                }
+                "id": "custom.lineWidth",
+                "value": 1
               }
             ]
           }
@@ -1132,7 +1241,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 27
       },
       "id": 16,
       "options": {
@@ -1146,7 +1255,7 @@
           "sort": "desc"
         }
       },
-      "title": "MinIO Tenant \u2014 usage & projection",
+      "title": "MinIO Tenant \u2014 usage vs quota",
       "type": "timeseries",
       "targets": [
         {
@@ -1154,8 +1263,8 @@
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "minio_cluster_usage_total_bytes",
-          "legendFormat": "{{ namespace }} usage",
+          "expr": "sum by (namespace)(minio_cluster_usage_total_bytes)",
+          "legendFormat": "{{ namespace }} used",
           "refId": "A"
         },
         {
@@ -1163,18 +1272,9 @@
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "predict_linear(minio_cluster_usage_total_bytes[$growth_window], 86400*30)",
-          "legendFormat": "{{ namespace }} +30d",
+          "expr": "sum by (namespace)(minio_cluster_capacity_usable_total_bytes)",
+          "legendFormat": "{{ namespace }} quota",
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${vm_datasource}"
-          },
-          "expr": "minio_cluster_capacity_usable_total_bytes * 0.80",
-          "legendFormat": "{{ namespace }} 80% threshold",
-          "refId": "C"
         }
       ]
     },
@@ -1184,7 +1284,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 36
       },
       "id": 17,
       "title": "How projections work",
@@ -1199,7 +1299,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 37
       },
       "id": 18,
       "options": {
