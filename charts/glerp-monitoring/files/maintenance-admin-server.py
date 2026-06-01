@@ -137,6 +137,20 @@ mark it on Grafana dashboards, and suppress alerts.</p>
   <strong>Past</strong> = completed.
   Times are shown in your browser's local timezone.
 </p>
+<p class="note">
+  <strong>Note on SLA impact:</strong> the <em>maintenance-adjusted</em> uptime
+  graphs only exclude a window's downtime <strong>after the window has ended</strong>.
+  While a window is Active or Upcoming, the adjusted graph still matches the raw
+  graph — it updates automatically once the end time passes (next time this page
+  loads). The blue annotation lines/band appear immediately either way.
+</p>
+<p class="note">
+  <strong>Note on alerts:</strong> while a window is Active, all matching GLerp
+  alerts are <strong>silenced</strong> in Alertmanager — so <em>neither</em> firing
+  (DOWN) <em>nor</em> resolved (UP) notifications are sent for those sites until the
+  window ends. This is intentional. If you are testing alert delivery, make sure no
+  maintenance window is currently active.
+</p>
 </div>
 </body>
 </html>
@@ -195,10 +209,15 @@ def write_metric(site, start_ms, end_ms):
         lines.append(f'{METRIC_WINDOW}{{site="{site}"}} 1 {ts}')
         ts += 60_000
     result = vm_post_text("/api/v1/import/prometheus", "\n".join(lines) + "\n")
-    # For windows that have already ended, query actual failed probe samples
-    # and record them as excused failures so the adjusted SLA formula is exact.
-    # Pre-delete any existing excused_failures for this range first to prevent
-    # accumulation if the same window period is written more than once.
+    # Excused-failure samples (what the maintenance-adjusted SLA formula actually
+    # subtracts) require the real probe_success==0 samples to already exist in VM,
+    # so they can only be written for the portion of the window that is in the PAST.
+    # For a window created entirely in the past, this fills it immediately.
+    # For an active/future window, the past portion (if any) is filled now and the
+    # still-pending portion is filled later by the reconcile sweep (see
+    # reconcile_recent_windows()), which re-checks recently-ended windows on each
+    # admin-tool request. Until a window fully ends, its adjusted SLA is not yet
+    # final — documented in the dashboard ⓘ panels and the admin UI.
     if end_ms < int(time.time() * 1000):
         _delete_excused_failures(site, start_ms, end_ms)
         _write_excused_failures(site, start_ms, end_ms)
@@ -220,9 +239,19 @@ def _delete_excused_failures(site, start_ms, end_ms):
 
 
 def _write_excused_failures(site, start_ms, end_ms):
-    """Query probe_success during the window; write a failure sample for each 0."""
+    """Query probe_success during the window; write a failure sample for each 0.
+
+    For site="all" we must NOT filter on site="all" (no series carries that
+    label). Instead query every site, then write each excused sample under the
+    result's OWN site label so the dashboard's
+    glerp_maintenance_excused_failures{site=~"$site"} matches real per-site data.
+    """
+    if site == "all":
+        selector = 'probe_success{job="glerp-sites-login"}'
+    else:
+        selector = f'probe_success{{job="glerp-sites-login",site="{site}"}}'
     qs = urllib.parse.urlencode({
-        "query": f'probe_success{{job="glerp-sites-login",site="{site}"}}',
+        "query": selector,
         "start": int(start_ms / 1000),
         "end":   int(end_ms   / 1000),
         "step":  "30s",
@@ -232,11 +261,13 @@ def _write_excused_failures(site, start_ms, end_ms):
         return
     lines = []
     for result in json.loads(body).get("data", {}).get("result", []):
+        # Use the series' own site label (handles the "all" fan-out correctly).
+        result_site = result.get("metric", {}).get("site", site)
         for ts_str, val_str in result.get("values", []):
             if float(val_str) == 0:
                 ts_ms = int(float(ts_str) * 1000)
                 lines.append(
-                    f'{METRIC_EXCUSED}{{site="{site}"}} 1 {ts_ms}')
+                    f'{METRIC_EXCUSED}{{site="{result_site}"}} 1 {ts_ms}')
     if lines:
         vm_post_text("/api/v1/import/prometheus", "\n".join(lines) + "\n")
 
@@ -356,6 +387,88 @@ def get_all_windows():
     return []
 
 
+def _excused_exists(site, start_ms, end_ms):
+    """True if any excused_failures sample already exists in [start,end] for site."""
+    sel = (METRIC_EXCUSED if site == "all"
+           else f'{METRIC_EXCUSED}{{site="{site}"}}')
+    qs = urllib.parse.urlencode({
+        "query": sel,
+        "start": int(start_ms / 1000),
+        "end":   int(end_ms   / 1000),
+        "step":  "300s",
+    })
+    st, body = _http("GET", VM_URL.rstrip("/") + f"/api/v1/query_range?{qs}")
+    if st != 200:
+        return False  # on error, allow the write attempt
+    for r in json.loads(body).get("data", {}).get("result", []):
+        if r.get("values"):
+            return True
+    return False
+
+
+def reconcile_recent_windows():
+    """Backfill excused_failures for windows that have ENDED but were created while
+    active/future (so write_metric's create-time branch skipped them).
+
+    This runs opportunistically on admin-tool requests — NOT on a timer/CronJob —
+    so there is no continuous CPU cost. It only does work when a window has ended
+    and its excused samples are missing; otherwise each annotation costs one cheap
+    existence query. Keeps the "write-on-conclude" model correct without polling.
+    """
+    now_ms = int(time.time() * 1000)
+    try:
+        anns = get_all_windows()
+    except Exception:
+        return
+    for ann in anns:
+        start = ann.get("time", 0)
+        end   = ann.get("timeEnd", start)
+        if not end or end >= now_ms:
+            continue  # still active/upcoming — nothing final to write yet
+        site = _ann_site(ann)
+        if not site:
+            continue
+        if _excused_exists(site, start, end):
+            continue  # already filled (e.g. window was created in the past)
+        _delete_excused_failures(site, start, end)
+        _write_excused_failures(site, start, end)
+
+
+def refill_overlapping_windows(deleted_site, del_start_ms, del_end_ms, skip_ann_id=None):
+    """After a window is deleted, re-derive excused_failures for any OTHER ended
+    window that overlaps the deleted range.
+
+    Deleting window A removes excused_failures across A's whole [start,end]. If a
+    different window B overlapped A, B's excused samples in the overlap are now gone,
+    silently corrupting B's adjusted SLA. Since excused_failures is always re-derived
+    from the untouched probe_success data, we can safely rewrite each overlapping
+    window's full range to restore it. "all" overlaps every site's windows.
+    """
+    now_ms = int(time.time() * 1000)
+    try:
+        anns = get_all_windows()
+    except Exception:
+        return
+    for ann in anns:
+        if skip_ann_id is not None and ann.get("id") == skip_ann_id:
+            continue  # the window being deleted — don't resurrect it
+        b_start = ann.get("time", 0)
+        b_end   = ann.get("timeEnd", b_start)
+        if not b_end or b_end >= now_ms:
+            continue  # only ended windows have authoritative excused data
+        # overlap test
+        if b_end <= del_start_ms or b_start >= del_end_ms:
+            continue
+        b_site = _ann_site(ann)
+        if not b_site:
+            continue
+        # "all" on either side means the ranges share sites
+        if deleted_site != "all" and b_site != "all" and b_site != deleted_site:
+            continue
+        _delete_excused_failures(b_site, b_start, b_end)
+        _write_excused_failures(b_site, b_start, b_end)
+
+
 def render_windows():
     try:
         anns = get_all_windows()
@@ -460,6 +573,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _render(self, msg=""):
+        # Opportunistically finalize any window that has ended since last view.
+        # No timer/CronJob — runs only when the admin tool is actually loaded.
+        try:
+            reconcile_recent_windows()
+        except Exception:
+            pass  # never let backfill break page rendering
         sites     = get_sites()
         site_opts = "\n    ".join(
             f'<option value="{s}">{s}</option>' for s in sites
@@ -622,6 +741,14 @@ class Handler(BaseHTTPRequestHandler):
                 notices.append(
                     f"Note: VictoriaMetrics delete returned HTTP {st} — "
                     "samples may persist until background merge completes")
+
+            # 2b. Re-derive excused_failures for any OTHER ended window that
+            # overlapped this one — deleting this window's range also wiped their
+            # excused samples in the overlap. Safe: re-derived from probe_success.
+            try:
+                refill_overlapping_windows(site, start_ms, end_ms, skip_ann_id=ann_id)
+            except Exception:
+                pass
 
             # 3. Delete Grafana annotation (removes blue band from dashboards immediately)
             st, body = mark_annotation_deleted(ann_id, ann, delete_comment)

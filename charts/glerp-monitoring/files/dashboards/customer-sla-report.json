@@ -189,7 +189,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
-      "description": "Uptime % with maintenance windows excluded from the calculation. During a defined maintenance window, any downtime does not count against the SLA figure.\n\nWhen no maintenance windows are defined this equals the raw uptime % above. Maintenance windows are created using the GLerp Maintenance Admin tool.",
+      "description": "Uptime % with maintenance windows excluded from the calculation. During a defined maintenance window, any downtime does not count against the SLA figure.\n\nWhen no maintenance windows are defined this equals the raw uptime % above. Maintenance windows are created using the GLerp Maintenance Admin tool.\n\nNote: a window's downtime is excluded only AFTER the window ends. While a window is active or upcoming this still matches the raw figure; it finalizes automatically once the end time passes.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },

@@ -171,6 +171,17 @@ On submit it simultaneously:
 Deletion from the same UI expires the silence, removes the metric, and removes the annotation band
 from all dashboards immediately.
 
+> **Maintenance-adjusted SLA is finalized after the window ends.** Excused-downtime
+> samples are derived from the real probe failures that occurred during the window, so
+> the adjusted graphs only diverge from the raw graphs once the end time has passed (the
+> admin tool backfills automatically on its next page load). While a window is active or
+> upcoming, the adjusted figure equals the raw figure.
+
+> **Alerts are fully silenced during an active window** — both firing (DOWN) and resolved
+> (UP) notifications are suppressed for matching sites until the window ends. This is by
+> design. When testing alert delivery, ensure no maintenance window is currently active,
+> or the resolved notification will not be sent.
+
 ### Enabling the Maintenance Admin
 
 Add to your values override:

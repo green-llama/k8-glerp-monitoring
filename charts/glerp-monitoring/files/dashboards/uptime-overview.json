@@ -214,7 +214,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
-      "description": "30-day uptime % with maintenance windows excluded from the calculation. During a defined maintenance window the downtime does not count against SLA.\n\nFormula: (probe_success up-samples) / (total samples − maintenance samples) × 100\n\nWhen no maintenance windows are defined this equals the raw figure. Maintenance windows are defined via the GLerp Maintenance Admin tool.",
+      "description": "30-day uptime % with maintenance windows excluded from the calculation. During a defined maintenance window the downtime does not count against SLA.\n\nFormula: (probe_success up-samples) / (total samples − maintenance samples) × 100\n\nWhen no maintenance windows are defined this equals the raw figure. Maintenance windows are defined via the GLerp Maintenance Admin tool.\n\nNote: a window's downtime is excluded only AFTER the window ends. While a window is active or upcoming this still matches the raw figure; it finalizes automatically once the end time passes.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
