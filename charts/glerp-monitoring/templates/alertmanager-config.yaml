@@ -2,7 +2,13 @@ apiVersion: monitoring.coreos.com/v1alpha1
 kind: AlertmanagerConfig
 metadata:
   name: {{ .Release.Name }}
-  namespace: {{ .Values.namespace }}
+  # MUST live in the Rancher Monitoring namespace, not .Values.namespace.
+  # The Alertmanager CR's alertmanagerConfigNamespaceSelector is {} (empty),
+  # which in prometheus-operator means "only this Alertmanager's own namespace".
+  # An AlertmanagerConfig deployed elsewhere is silently never merged, and all
+  # alerts fall through to Rancher's default `null` receiver (no email/Telegram,
+  # no send logs). v1.x worked because it deployed here. See LESSONS_LEARNED.md.
+  namespace: {{ .Values.prometheusNamespace }}
   labels:
     {{- include "glerp-monitoring.labels" . | nindent 4 }}
     {{- include "glerp-monitoring.prometheusRuleLabels" . | nindent 4 }}

@@ -1,4 +1,4 @@
-GLerp Monitoring v2.1.10 deployed to namespace {{ .Values.namespace }}.
+GLerp Monitoring v{{ .Chart.AppVersion }} deployed to namespace {{ .Values.namespace }}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INSTALL — Namespace and secrets (before helm install)
@@ -7,9 +7,13 @@ INSTALL — Namespace and secrets (before helm install)
   # Create the namespace (or use --create-namespace on the helm install command)
   kubectl create namespace {{ .Values.namespace }}
 
-  # Pre-create the SMTP secret (required before install)
+  # Pre-create the SMTP secret (required before install).
+  # NOTE: this secret lives in the RANCHER MONITORING namespace
+  # ({{ .Values.prometheusNamespace }}), NOT {{ .Values.namespace }} — the AlertmanagerConfig is
+  # deployed there and Prometheus Operator only reads secrets in the config's
+  # own namespace. (See the "Alert delivery" section below.)
   kubectl create secret generic {{ .Values.alertmanager.email.passwordSecret.name }} \
-    --namespace {{ .Values.namespace }} \
+    --namespace {{ .Values.prometheusNamespace }} \
     --from-literal={{ .Values.alertmanager.email.passwordSecret.key }}='YOUR_SMTP_PASSWORD'
 
   # Install
@@ -40,11 +44,80 @@ In Rancher UI → Apps → rancher-monitoring → Edit → paste into YAML:
         key: additional-scrape-configs.yaml
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED — Alert delivery: matcher strategy + secret namespace (one-time)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Two things must be true for alerts (email/Telegram/Slack) to actually send.
+Without them the alert shows in the Alertmanager UI but routes to the default
+"null" receiver — no send attempt, no logs.
+
+1) The AlertmanagerConfig is deployed into {{ .Values.prometheusNamespace }} (this chart
+   does this automatically). Rancher's Alertmanager has an empty
+   alertmanagerConfigNamespaceSelector ({}), which means "only my own namespace",
+   so the config MUST live alongside Alertmanager. The SMTP / Telegram / Slack
+   secrets it references must ALSO live in {{ .Values.prometheusNamespace }} (see INSTALL above).
+
+2) Set the matcher strategy to None so routing uses this chart's explicit
+   alert_type / severity matchers instead of an injected per-namespace matcher
+   (GLerp alerts carry the workload's namespace, not Alertmanager's).
+   In Rancher UI → Apps → rancher-monitoring → Edit → paste into YAML:
+
+   alertmanager:
+     alertmanagerSpec:
+       alertmanagerConfigMatcherStrategy:
+         type: None
+
+Verify after rollout (alert should route to email-alerts / messaging-critical,
+NOT "null"):
+
+  kubectl get --raw '/api/v1/namespaces/{{ .Values.prometheusNamespace }}/services/rancher-monitoring-alertmanager:9093/proxy/api/v2/alerts' \
+    | python3 -c "import sys,json; [print(a['labels'].get('alertname'), '->', [r['name'] for r in a.get('receivers',[])]) for a in json.load(sys.stdin)]"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED on SELinux-enforcing nodes — node filesystem metrics (one-time, per node)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+On SELinux-enforcing nodes (typical for production), the Rancher Monitoring
+node-exporter cannot read /host/proc/1/mountinfo, so node_filesystem_* metrics
+(and the Capacity Planning "Node Filesystem" plane) are missing for that node.
+The denial (container_t -> init_t dir search) is suppressed by a dontaudit rule,
+so node-exporter logs only show "permission denied".
+
+Install this minimal SELinux module on EVERY node (it stays enforcing; do NOT use
+permissive mode or relabel /proc). The compiled .pp is portable across identical
+nodes — build once, then `semodule -i` the .pp on the rest.
+
+  cat > /tmp/node_exporter_proc.te <<'POLICY'
+  module node_exporter_proc 1.0;
+  require {
+      type container_t; type init_t;
+      class dir { search read open getattr };
+      class file { read open getattr };
+      class lnk_file { read getattr };
+  }
+  allow container_t init_t:dir { search read open getattr };
+  allow container_t init_t:file { read open getattr };
+  allow container_t init_t:lnk_file { read getattr };
+  POLICY
+
+  cd /tmp
+  checkmodule -M -m -o node_exporter_proc.mod node_exporter_proc.te
+  semodule_package -o node_exporter_proc.pp -m node_exporter_proc.mod
+  sudo semodule -i node_exporter_proc.pp
+
+Then restart node-exporter so every pod re-runs the collector:
+
+  kubectl rollout restart daemonset/rancher-monitoring-prometheus-node-exporter \
+    -n cattle-monitoring-system --request-timeout=5s
+
+Verify: each node should report node_filesystem_size_bytes in Prometheus/Grafana.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OPTIONAL — Telegram alerts
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   kubectl create secret generic {{ .Values.alertmanager.telegram.botTokenSecret.name }} \
-    --namespace {{ .Values.namespace }} \
+    --namespace {{ .Values.prometheusNamespace }} \
     --from-literal={{ .Values.alertmanager.telegram.botTokenSecret.key }}='YOUR_BOT_TOKEN'
 
 Then set alertmanager.telegram.enabled=true and alertmanager.telegram.chatId in your values.

@@ -29,9 +29,12 @@ Designed for RKE2 clusters running Rancher Monitoring (kube-prometheus-stack).
   # VictoriaMetrics PVC from accidental deletion on helm uninstall)
   kubectl create namespace glerp-monitoring
 
-  # SMTP secret for AlertManager email delivery
+  # SMTP secret for AlertManager email delivery.
+  # NOTE: must be in cattle-monitoring-system (the Rancher Monitoring namespace),
+  # NOT glerp-monitoring — the AlertmanagerConfig lives there and Prometheus
+  # Operator only reads secrets in the config's own namespace.
   kubectl create secret generic alertmanager-smtp-secret \
-    --namespace glerp-monitoring \
+    --namespace cattle-monitoring-system \
     --from-literal=smtp_auth_password='YOUR_APP_PASSWORD'
   ```
   > If using Gmail with 2-Step Verification, use a Google App Password (Google Account → Security → App Passwords), not your login password. The `from:` address must match `authUsername:` exactly, or be a verified "Send mail as" alias.
@@ -249,6 +252,36 @@ for phone push notifications. Both are opt-in and can be enabled independently.
 
 > **Both can be enabled simultaneously.** When enabled, critical alerts are sent to email AND to
 > the messaging channel(s) at the same time. Warning and info severity alerts go to email only.
+
+### Required one-time Rancher Monitoring setup for alert delivery
+
+Two conditions must hold or alerts appear in the Alertmanager UI but are routed to the default
+`null` receiver — **no email/Telegram/Slack is sent and nothing is logged**:
+
+1. **AlertmanagerConfig + secrets live in `cattle-monitoring-system`.** The chart deploys the
+   `AlertmanagerConfig` into `prometheusNamespace` (default `cattle-monitoring-system`) because
+   Rancher's Alertmanager has an empty `alertmanagerConfigNamespaceSelector` (`{}`), meaning
+   "only my own namespace." The SMTP/Telegram/Slack secrets it references must be in that same
+   namespace (Prometheus Operator cannot read secrets cross-namespace).
+
+2. **Set the matcher strategy to `None`** on the Rancher Monitoring Alertmanager, so routing uses
+   this chart's explicit `alert_type`/`severity` matchers instead of an auto-injected per-namespace
+   matcher (GLerp alerts carry the *workload's* namespace, not Alertmanager's). In Rancher UI →
+   Apps → `rancher-monitoring` → Edit YAML:
+
+   ```yaml
+   alertmanager:
+     alertmanagerSpec:
+       alertmanagerConfigMatcherStrategy:
+         type: None
+   ```
+
+**Verify** (firing alerts should route to `email-alerts` / `messaging-critical`, not `null`):
+
+```bash
+kubectl get --raw '/api/v1/namespaces/cattle-monitoring-system/services/rancher-monitoring-alertmanager:9093/proxy/api/v2/alerts' \
+  | python3 -c "import sys,json; [print(a['labels'].get('alertname'),'->',[r['name'] for r in a.get('receivers',[])]) for a in json.load(sys.stdin)]"
+```
 
 ---
 

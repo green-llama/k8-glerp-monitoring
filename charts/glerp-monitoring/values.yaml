@@ -316,9 +316,12 @@ alertmanager:
     # Recipient(s) — comma-separated for multiple
     to: "alerts@greenllama.tech"
     authUsername: "alerts@greenllama.tech"
-    # Pre-create this Secret before installing the chart:
+    # Pre-create this Secret before installing the chart. It MUST live in the
+    # Rancher Monitoring namespace (prometheusNamespace, default
+    # cattle-monitoring-system) — the AlertmanagerConfig is deployed there and
+    # Prometheus Operator can only read secrets in the config's own namespace:
     #   kubectl create secret generic alertmanager-smtp-secret \
-    #     --namespace glerp-monitoring \
+    #     --namespace cattle-monitoring-system \
     #     --from-literal=smtp_auth_password='YOUR_PASSWORD'
     passwordSecret:
       name: alertmanager-smtp-secret
@@ -329,8 +332,9 @@ alertmanager:
   telegram:
     enabled: false
     chatId: 0
-    # Pre-create: kubectl create secret generic telegram-alertmanager-secret \
-    #   --namespace glerp-monitoring --from-literal=bot_token='YOUR_BOT_TOKEN'
+    # Pre-create in the Rancher Monitoring namespace (cattle-monitoring-system):
+    #   kubectl create secret generic telegram-alertmanager-secret \
+    #     --namespace cattle-monitoring-system --from-literal=bot_token='YOUR_BOT_TOKEN'
     botTokenSecret:
       name: telegram-alertmanager-secret
       key: bot_token
@@ -339,6 +343,9 @@ alertmanager:
   slack:
     enabled: false
     channel: "#alerts"
+    # Pre-create in the Rancher Monitoring namespace (cattle-monitoring-system):
+    #   kubectl create secret generic slack-alertmanager-secret \
+    #     --namespace cattle-monitoring-system --from-literal=webhook_url='YOUR_WEBHOOK_URL'
     webhookSecret:
       name: slack-alertmanager-secret
       key: webhook_url
