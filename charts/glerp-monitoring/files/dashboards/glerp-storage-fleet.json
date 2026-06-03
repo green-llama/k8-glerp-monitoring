@@ -358,7 +358,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_capacity_usable_total_bytes)",
+          "expr": "sum(max by (tenant) (minio_cluster_capacity_usable_total_bytes))",
           "legendFormat": "MinIO Total Usable",
           "instant": true
         }
@@ -418,7 +418,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_usage_total_bytes)",
+          "expr": "sum(max by (tenant) (minio_cluster_usage_total_bytes))",
           "legendFormat": "MinIO Total Used",
           "instant": true
         }
@@ -470,7 +470,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_capacity_usable_total_bytes) - sum(minio_cluster_usage_total_bytes)",
+          "expr": "sum(max by (tenant) (minio_cluster_capacity_usable_total_bytes)) - sum(max by (tenant) (minio_cluster_usage_total_bytes))",
           "legendFormat": "MinIO Total Free",
           "instant": true
         }

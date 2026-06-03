@@ -91,7 +91,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_usage_total_bytes{namespace=\"$namespace\"})",
+          "expr": "max(minio_cluster_usage_total_bytes{namespace=\"$namespace\"})",
           "legendFormat": "MinIO Used",
           "instant": true
         }
@@ -145,7 +145,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
+          "expr": "max(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
           "legendFormat": "MinIO Usable Capacity",
           "instant": true
         }
@@ -209,7 +209,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_usage_total_bytes{namespace=\"$namespace\"}) / sum(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
+          "expr": "max(minio_cluster_usage_total_bytes{namespace=\"$namespace\"}) / max(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
           "legendFormat": "MinIO % Used",
           "instant": true
         }
@@ -332,7 +332,7 @@
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "sum(minio_cluster_usage_total_bytes{namespace=\"$namespace\"})",
+          "expr": "max(minio_cluster_usage_total_bytes{namespace=\"$namespace\"})",
           "legendFormat": "MinIO Used",
           "refId": "A"
         },
@@ -341,7 +341,7 @@
             "type": "prometheus",
             "uid": "${vm_datasource}"
           },
-          "expr": "sum(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
+          "expr": "max(minio_cluster_capacity_usable_total_bytes{namespace=\"$namespace\"})",
           "legendFormat": "MinIO Usable Capacity",
           "refId": "B"
         }
@@ -641,7 +641,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=\"$namespace\", persistentvolumeclaim!~\".*mariadb.*\"})",
+          "expr": "sum(longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"})",
           "legendFormat": "Block Provisioned",
           "instant": true
         }
@@ -705,7 +705,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}) / sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=\"$namespace\", persistentvolumeclaim!~\".*mariadb.*\"})",
+          "expr": "sum(longhorn_volume_actual_size_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"}) / sum(longhorn_volume_capacity_bytes{pvc_namespace=\"$namespace\", pvc!~\".*mariadb.*\"})",
           "legendFormat": "Block % Used",
           "instant": true
         }

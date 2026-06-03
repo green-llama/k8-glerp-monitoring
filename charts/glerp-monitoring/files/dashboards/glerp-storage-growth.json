@@ -1060,7 +1060,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(minio_cluster_capacity_usable_total_bytes)",
+          "expr": "sum(max by (tenant) (minio_cluster_capacity_usable_total_bytes))",
           "instant": true,
           "legendFormat": "Usable"
         }
