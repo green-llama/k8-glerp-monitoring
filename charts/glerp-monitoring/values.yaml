@@ -459,6 +459,15 @@ trivy-operator:
     exposedSecretScannerEnabled: false
     complianceScannerEnabled: false
     infraAssessmentScannerEnabled: false
+    # Self-healing report cleanup (the no-manual-effort fix for stale CVE entries).
+    # Every VulnerabilityReport expires after this TTL, then Trivy regenerates it on
+    # the next scan cycle ONLY for images that still have a live workload. Reports for
+    # images no longer in use (pruned ReplicaSets, deleted/completed Jobs, orphaned
+    # reports) simply expire and are never recreated — so the CVE dashboard converges
+    # to "images actually in use" without deleting reports by hand. Set explicitly
+    # (not relying on the subchart default) so it is guaranteed and self-documented.
+    scannerReportTTL: "24h"
+    scanJobTTL: "1h"
   trivy:
     mode: ClientServer
     storageClassName: ""

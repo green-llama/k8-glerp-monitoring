@@ -8,12 +8,12 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.1.18
-appVersion: "2.1.18"
+version: 2.1.19
+appVersion: "2.1.19"
 annotations:
   artifacthub.io/changes: |
     - kind: added
-      description: "CVE table info panel now explains why upgraded-away images linger (retained 0-replica ReplicaSets) and how to clear them (revisionHistoryLimit / kubectl delete rs)"
+      description: "Trivy operator scannerReportTTL (24h) and scanJobTTL (1h) set explicitly so VulnerabilityReports self-expire and regenerate only for in-use images, and scan Jobs auto-clean — self-documented, immune to subchart default drift"
 keywords:
   - monitoring
   - uptime
