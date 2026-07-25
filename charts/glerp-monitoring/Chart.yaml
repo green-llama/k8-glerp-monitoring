@@ -8,12 +8,12 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.1.17
-appVersion: "2.1.17"
+version: 2.1.18
+appVersion: "2.1.18"
 annotations:
   artifacthub.io/changes: |
-    - kind: fixed
-      description: "CVE density recording rule interval changed from 1h to 5m — a 1h group's first-evaluation timer is reset by every Rancher config reload, so it could stay perpetually unevaluated and never produce glerp:cve_density. 5m evaluates promptly and survives reloads; still one series, no OOM risk"
+    - kind: added
+      description: "CVE table info panel now explains why upgraded-away images linger (retained 0-replica ReplicaSets) and how to clear them (revisionHistoryLimit / kubectl delete rs)"
 keywords:
   - monitoring
   - uptime
