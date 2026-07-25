@@ -8,8 +8,16 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.1.15
-appVersion: "2.1.15"
+version: 2.1.16
+appVersion: "2.1.16"
+annotations:
+  artifacthub.io/changes: |
+    - kind: fixed
+      description: "Security dashboard defaults to the GLerp VictoriaMetrics datasource (was Prometheus), so kube-bench/ZAP/Trivy panels show 90-day history without manual switching"
+    - kind: fixed
+      description: "Pushgateway now persists pushed metrics to a PVC (--persistence.file), so a pod restart no longer wipes weekly kube-bench/ZAP results"
+    - kind: fixed
+      description: "Fleet CVE C+H density is now a pre-computed hourly recording rule (glerp:cve_density) instead of a live high-cardinality query, fixing out-of-memory errors on multi-day lookbacks"
 keywords:
   - monitoring
   - uptime

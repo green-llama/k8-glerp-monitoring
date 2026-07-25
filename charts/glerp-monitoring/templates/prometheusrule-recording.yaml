@@ -22,6 +22,29 @@ spec:
               (1 + probe_success{job="glerp-sites-login"})
             )
 
+    # ── Security recording rules (hourly — high-cardinality source metrics) ──────
+    # trivy_image_vulnerabilities is very high cardinality (one series per CVE ×
+    # image × namespace). Graphing the raw C+H density expression over a multi-day
+    # range forces the datasource to load millions of samples and OOMs. Pre-compute
+    # it once per hour into a single lightweight series; the dashboard then graphs
+    # glerp:cve_density over any duration cheaply. Forwarded to VictoriaMetrics via
+    # the glerp:.* remoteWrite filter for 90-day retention.
+    - name: glerp.recording.security
+      interval: 1h
+      rules:
+        # Fixable Critical+High CVEs per tracked image (fleet-size-normalized).
+        - record: glerp:cve_density
+          expr: |
+            sum(trivy_image_vulnerabilities{severity=~"Critical|High"})
+            /
+            count(count by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities))
+        # Raw fixable severity totals — pre-aggregated so the trend panels also
+        # graph a low-cardinality series instead of re-summing the raw metric.
+        - record: glerp:cve_total_critical
+          expr: sum(trivy_image_vulnerabilities{severity="Critical"})
+        - record: glerp:cve_total_high
+          expr: sum(trivy_image_vulnerabilities{severity="High"})
+
     # NOTE: Long-term SLA ratios (30-day uptime %, downtime minutes) are NOT
     # computed here as recording rules. Prometheus retains data for only
     # {{ .Values.prometheusRetentionNote | default "~10 days" }}, so a [30d]

@@ -67,7 +67,7 @@ data:
           "type": "gauge",
           "targets": [
             {
-              "expr": "sum(trivy_image_vulnerabilities{severity=~\"Critical|High\"}) / count(count by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities))",
+              "expr": "glerp:cve_density",
               "legendFormat": "CVEs / Image",
               "refId": "A"
             }
@@ -202,7 +202,7 @@ data:
             { "expr": "sum(trivy_image_vulnerabilities{severity=\"High\"})     or vector(0)", "legendFormat": "High",     "refId": "B" },
             { "expr": "sum(trivy_image_vulnerabilities{severity=\"Medium\"})   or vector(0)", "legendFormat": "Medium",   "refId": "C" },
             {
-              "expr": "sum(trivy_image_vulnerabilities{severity=~\"Critical|High\"}) / count(count by (namespace, resource_name, image_tag) (trivy_image_vulnerabilities))",
+              "expr": "glerp:cve_density",
               "legendFormat": "C+H Density",
               "refId": "D"
             }
@@ -513,8 +513,8 @@ data:
           {
             "current": {
               "selected": true,
-              "text": "Prometheus",
-              "value": "prometheus"
+              "text": "GLerp — VictoriaMetrics",
+              "value": "glerp-vm"
             },
             "hide": 0,
             "includeAll": false,

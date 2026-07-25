@@ -527,6 +527,19 @@ prometheus-pushgateway:
   serviceMonitor:
     enabled: true
     namespace: ""
+  # Persist the pushed metrics to disk. kube-bench/ZAP only run weekly, so without
+  # persistence a Pushgateway pod restart wipes all pushed metrics and the security
+  # dashboard shows 0s until the next Sunday run. --persistence.file (below) writes
+  # the in-memory store to this PVC every 5m and reloads it on startup.
+  persistentVolume:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /data
+    size: 256Mi
+  extraArgs:
+    - --persistence.file=/data/pushgateway.store
+    - --persistence.interval=5m
   resources:
     requests:
       cpu: "10m"
