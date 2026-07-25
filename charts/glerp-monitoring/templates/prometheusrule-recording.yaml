@@ -22,15 +22,24 @@ spec:
               (1 + probe_success{job="glerp-sites-login"})
             )
 
-    # ── Security recording rules (hourly — high-cardinality source metrics) ──────
+    # ── Security recording rules (high-cardinality source metrics) ──────────────
     # trivy_image_vulnerabilities is very high cardinality (one series per CVE ×
     # image × namespace). Graphing the raw C+H density expression over a multi-day
     # range forces the datasource to load millions of samples and OOMs. Pre-compute
-    # it once per hour into a single lightweight series; the dashboard then graphs
-    # glerp:cve_density over any duration cheaply. Forwarded to VictoriaMetrics via
-    # the glerp:.* remoteWrite filter for 90-day retention.
+    # it into a single lightweight series; the dashboard then graphs glerp:cve_density
+    # over any duration cheaply. Forwarded to VictoriaMetrics via the glerp:.*
+    # remoteWrite filter for 90-day retention.
+    #
+    # interval: 5m (NOT 1h). A long interval is fragile here — Rancher reloads the
+    # Prometheus config whenever any ServiceMonitor/PrometheusRule changes, and each
+    # reload resets a group's first-evaluation timer, so a 1h group can be perpetually
+    # delayed and never evaluate. 5m evaluates promptly and survives reloads. This does
+    # NOT risk the original OOM: that was caused by the dashboard loading the raw
+    # high-cardinality metric live, not by eval frequency. The rule outputs ONE series
+    # regardless of interval, so 90 days at 5m (~26k samples of a single series) renders
+    # instantly.
     - name: glerp.recording.security
-      interval: 1h
+      interval: 5m
       rules:
         # Fixable Critical+High CVEs per tracked image (fleet-size-normalized).
         - record: glerp:cve_density
