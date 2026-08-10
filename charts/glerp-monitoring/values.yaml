@@ -289,18 +289,26 @@ reportServer:
       cpu: "100m"
       memory: "64Mi"
 
-# ── GHCR private registry auth (via ESO) ─────────────────────────────────────
-# Distributes ghcr-pull-secret to namespaces labeled glerp.io/private-registry=true.
+# ── GHCR private registry auth (via ESO + Vault) ─────────────────────────────
+# Conforms to the shared GHCR pull-secret standard (matches glerp / k8-glerp-ai-intake):
+# reads the shared Vault path secret/data/github/ghcr-cred via the vault-backend
+# ClusterSecretStore and creates a kubernetes.io/dockerconfigjson secret named
+# "ghcr-cred". This chart's own pods use only public images; the secret exists so
+# Trivy Operator can SCAN private ghcr.io/green-llama images. Trivy needs the secret
+# in every namespace that holds private images, so a ClusterExternalSecret fans it out
+# to namespaces labeled glerp.io/private-registry=true (a deliberate deviation from the
+# single-namespace standard — required for cross-namespace scanning).
 ghcrRegistryAuth:
   enabled: false
-  secretName: "ghcr-pull-secret"
+  secretName: "ghcr-cred"
   eso:
     enabled: false
     createResources: false
-    clusterSecretStoreName: "k8s-ghcr-source"
-    sourceNamespace: "glerp-ai-intake-sandbox"
-    controllerNamespace: "external-secrets"
-    controllerServiceAccount: "external-secrets"
+    # Shared Vault-backed store (already exists cluster-wide; do NOT self-create).
+    clusterSecretStoreName: "vault-backend"
+    # Vault KV path and property holding the base64 dockerconfigjson value.
+    vaultKey: "secret/data/github/ghcr-cred"
+    vaultProperty: "config"
     clusterExternalSecret:
       enabled: false
       namespaceSelector:
@@ -509,7 +517,7 @@ trivy-operator:
     scanJobCustomVolumes:
       - name: ghcr-docker-config
         secret:
-          secretName: ghcr-pull-secret
+          secretName: ghcr-cred
           optional: true
           items:
             - key: .dockerconfigjson

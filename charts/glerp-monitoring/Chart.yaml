@@ -8,12 +8,14 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.1.19
-appVersion: "2.1.19"
+version: 2.1.20
+appVersion: "2.1.20"
 annotations:
   artifacthub.io/changes: |
-    - kind: added
-      description: "Trivy operator scannerReportTTL (24h) and scanJobTTL (1h) set explicitly so VulnerabilityReports self-expire and regenerate only for in-use images, and scan Jobs auto-clean — self-documented, immune to subchart default drift"
+    - kind: changed
+      description: "GHCR pull secret conforms to the shared ESO+Vault standard: reads secret/data/github/ghcr-cred via the vault-backend ClusterSecretStore and creates a secret named ghcr-cred (was ghcr-pull-secret from a self-created k8s-to-k8s store). Cross-namespace ClusterExternalSecret fan-out retained so Trivy can scan private images in labeled namespaces"
+    - kind: removed
+      description: "Self-created ghcr-cluster-secret-store.yaml (k8s-ghcr-source) — now uses the shared cluster-wide vault-backend ClusterSecretStore"
 keywords:
   - monitoring
   - uptime

@@ -229,7 +229,19 @@ Set in values:
     - name: mycustomer
       url: "https://mycustomer.{{ .Values.cluster.domain }}"
 
-See README.md for the full ESO/GHCR private registry setup if needed.
+GHCR private registry auth (so Trivy can scan private ghcr.io/green-llama images):
+  ghcrRegistryAuth.enabled: true
+  ghcrRegistryAuth.eso.enabled: true
+  ghcrRegistryAuth.eso.createResources: true
+  ghcrRegistryAuth.eso.clusterExternalSecret.enabled: true
+
+This reads the shared Vault path secret/data/github/ghcr-cred via the vault-backend
+ClusterSecretStore and creates a "ghcr-cred" dockerconfigjson secret in every namespace
+labeled glerp.io/private-registry=true. Prereqs (already exist cluster-wide): the
+vault-backend ClusterSecretStore and the seeded Vault path. Label scanned namespaces:
+  kubectl label namespace <ns> glerp.io/private-registry=true
+
+ESO syncs ghcr-cred asynchronously (~30-60s); no manual "kubectl create secret" needed.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Grafana Dashboards
