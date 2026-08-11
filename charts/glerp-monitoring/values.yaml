@@ -460,22 +460,34 @@ trivy-operator:
   operator:
     builtInTrivyServer: true
     scanJobTimeout: "5m"
-    scanJobsConcurrentLimit: 1
+    # ── Concurrency + job TTL: the two settings that govern scan THROUGHPUT ────────
+    # The operator counts EXISTING scan Jobs (running AND recently-completed) against
+    # scanJobsConcurrentLimit. A scan itself takes only ~5s, but if completed Jobs
+    # linger (scanJobTTL), they keep occupying concurrency slots and STARVE new scans
+    # — the operator logs "Checking scan jobs limit {count: N, limit: N} / Pushing back".
+    # On a full-cluster scan (100+ workloads) this manifested as permanent partial
+    # coverage that looked like the operator was "wedged": most workloads never scanned,
+    # deleting a report didn't regenerate it (no free slot). Root-caused via debug logs
+    # (OPERATOR_LOG_DEV_MODE). Fix = keep completed Jobs short-lived so slots free fast,
+    # AND give enough concurrency to drain the cluster-wide queue.
+    #   - scanJobTTL 90s: completed Jobs clear quickly (frees slots); still leaves a
+    #     short forensic window to inspect a failed scan job. (Was 1h — the starvation.)
+    #   - scanJobsConcurrentLimit 10: with ~5s scans + fast slot turnover, drains 100+
+    #     workloads in a few minutes. Safe here — the historical I/O brownout was from
+    #     the OTHER scanner types (config-audit/compliance), not vuln-scan concurrency;
+    #     ClientServer mode also means scan pods share one trivy-server DB (no per-pod
+    #     250MB download). Raise further only if the cluster grows a lot.
+    scanJobsConcurrentLimit: 10
+    scanJobTTL: "90s"
     vulnerabilityScannerEnabled: true
     configAuditScannerEnabled: false
     rbacAssessmentScannerEnabled: false
     exposedSecretScannerEnabled: false
     complianceScannerEnabled: false
     infraAssessmentScannerEnabled: false
-    # Self-healing report cleanup (the no-manual-effort fix for stale CVE entries).
-    # Every VulnerabilityReport expires after this TTL, then Trivy regenerates it on
-    # the next scan cycle ONLY for images that still have a live workload. Reports for
-    # images no longer in use (pruned ReplicaSets, deleted/completed Jobs, orphaned
-    # reports) simply expire and are never recreated — so the CVE dashboard converges
-    # to "images actually in use" without deleting reports by hand. Set explicitly
-    # (not relying on the subchart default) so it is guaranteed and self-documented.
+    # VulnerabilityReport validity: after this TTL the operator re-scans the workload
+    # (keeps CVE data fresh). Reports for images no longer running are not recreated.
     scannerReportTTL: "24h"
-    scanJobTTL: "1h"
   trivy:
     mode: ClientServer
     storageClassName: ""

@@ -8,12 +8,14 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.2.0
-appVersion: "2.2.0"
+version: 2.2.1
+appVersion: "2.2.1"
 annotations:
   artifacthub.io/changes: |
+    - kind: fixed
+      description: "Trivy scan-job throughput: scanJobTTL 1h -> 90s and scanJobsConcurrentLimit 1 -> 10. Completed scan Jobs count against the concurrency limit; at 1h TTL they occupied every slot and starved new scans, so on a full-cluster scan most workloads never got a report and deleting a report didn't regenerate it (looked like the operator was wedged). Root-caused via debug logs; verified the queue now drains and all app workloads scan"
     - kind: changed
-      description: "Upgrade trivy-operator subchart 0.32.1 -> 0.35.0 (app 0.30.1 -> 0.33.0) for a more robust vuln-scan reconciler"
+      description: "Upgrade trivy-operator subchart 0.32.1 -> 0.35.0 (app 0.30.1 -> 0.33.0)"
     - kind: fixed
       description: "Bound Trivy vulnerability scan severity so VulnerabilityReport CRDs stay under the Kubernetes 3 MiB object limit — large glerp-image reports at all-5 severities exceeded it, so the CRD was never written (Request entity too large) and the workload silently got no metric and no dashboard data. Severity is configurable; widening past the safe scope risks re-hitting the limit on the heaviest images"
     - kind: removed
