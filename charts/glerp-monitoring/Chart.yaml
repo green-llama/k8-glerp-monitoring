@@ -8,12 +8,14 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.2.1
-appVersion: "2.2.1"
+version: 2.2.2
+appVersion: "2.2.2"
 annotations:
   artifacthub.io/changes: |
     - kind: fixed
-      description: "Trivy scan-job throughput: scanJobTTL 1h -> 90s and scanJobsConcurrentLimit 1 -> 10. Completed scan Jobs count against the concurrency limit; at 1h TTL they occupied every slot and starved new scans, so on a full-cluster scan most workloads never got a report and deleting a report didn't regenerate it (looked like the operator was wedged). Root-caused via debug logs; verified the queue now drains and all app workloads scan"
+      description: "Heavy app-image scans (glerp-image) no longer time out: skip node_modules (trivy.skipDirs), raise trivy.timeout + scanJobTimeout to 15m, and drop the deprecated trivy.slow flag. The huge frappe/posawesome node_modules tree caused scans to exceed the 5m default and fail silently (context deadline exceeded) with no report written. skipDirs is global (all images, no per-image management)"
+    - kind: fixed
+      description: "Trivy scan-job throughput: scanJobTTL 1h -> 90s and scanJobsConcurrentLimit 1 -> 10. Completed scan Jobs count against the concurrency limit; at 1h TTL they occupied every slot and starved new scans, so on a full-cluster scan most workloads never got a report and deleting a report didn't regenerate it (looked like the operator was wedged). Root-caused via debug logs"
     - kind: changed
       description: "Upgrade trivy-operator subchart 0.32.1 -> 0.35.0 (app 0.30.1 -> 0.33.0)"
     - kind: fixed

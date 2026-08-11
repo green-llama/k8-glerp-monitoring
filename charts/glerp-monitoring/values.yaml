@@ -459,7 +459,9 @@ trivy-operator:
   excludeNamespaces: "kube-system,kube-public,kube-node-lease,cattle-system,cattle-webhook-system,cattle-fleet-system,cattle-fleet-local-system,cattle-provisioning-capi-system,cattle-monitoring-system,cattle-logging-system,cattle-alerting-system,cattle-dashboards,cattle-impersonation-system,fleet-local,fleet-default,rancher-operator-system,traefik-system,cert-manager,longhorn-system,external-secrets,glerp-monitoring"
   operator:
     builtInTrivyServer: true
-    scanJobTimeout: "5m"
+    # Job-level timeout — must be >= trivy.timeout (below) or the Job is killed before
+    # Trivy finishes. Raised to 15m for heavy app images (large frappe/node_modules trees).
+    scanJobTimeout: "15m"
     # ── Concurrency + job TTL: the two settings that govern scan THROUGHPUT ────────
     # The operator counts EXISTING scan Jobs (running AND recently-completed) against
     # scanJobsConcurrentLimit. A scan itself takes only ~5s, but if completed Jobs
@@ -514,7 +516,21 @@ trivy-operator:
     # reporting). If broader coverage with full detail is needed, see the Phase 2
     # FileBrowser offload (webhookBroadcastURL + receiver) noted in the chart docs.
     severity: "HIGH,CRITICAL"
-    slow: true
+    # ── Heavy-image scan tuning (large frappe/node_modules trees) ─────────────────
+    # Full app images (glerp-image) carry a huge node_modules tree (posawesome frontend
+    # + frappe apps = thousands of package.json files). At the default 5m timeout Trivy
+    # times out mid-analysis ("context deadline exceeded") and the scan FAILS with no
+    # report — silently. Two coordinated fixes:
+    #   - skipDirs: skip node_modules everywhere. These are built/bundled frontend deps
+    #     (low runtime attack surface); skipping them makes scans fast and keeps the real
+    #     patchable surface (OS + Python/frappe). GLOBAL — applies to every image, no
+    #     per-image/per-namespace management. (Comma-separated dir list; glob supported.)
+    #   - timeout 15m + slow:false: safety margin so even a heavy image finishes, and drop
+    #     the deprecated `slow` flag (it deliberately runs SLOWER, worsening the timeout).
+    # NOTE: scanJobTimeout (operator, above) must be >= this trivy.timeout.
+    skipDirs: "**/node_modules"
+    timeout: "15m0s"
+    slow: false
     priorityClassName: "glerp-scan-low"
     resources:
       requests:
