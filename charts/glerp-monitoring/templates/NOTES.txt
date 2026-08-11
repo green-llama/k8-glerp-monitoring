@@ -243,6 +243,20 @@ vault-backend ClusterSecretStore and the seeded Vault path. Label scanned namesp
 
 ESO syncs ghcr-cred asynchronously (~30-60s); no manual "kubectl create secret" needed.
 
+CVE report severity & the 3 MiB limit (IMPORTANT):
+  A VulnerabilityReport is one Kubernetes object; the API server rejects any object
+  over 3 MiB. Full app images (e.g. glerp-image) scanned across all 5 severities
+  produce reports that EXCEED 3 MiB — the report then silently fails to store and the
+  workload shows NO data on the dashboard. The chart defaults trivy vuln severity to
+  HIGH,CRITICAL (matches the dashboard's Fixable C+H metric / SOC2 CC6.6) to stay under
+  the limit. You may widen trivy-operator.trivy.severity, but widening past the safe
+  scope will re-break the heaviest images (they silently stop reporting).
+
+  Full per-CVE detail for any image is available on demand (all severities the scan
+  found, regardless of the dashboard's C+H focus):
+    kubectl get vulnerabilityreport -n <ns> <report-name> -o json \
+      | jq '.report.vulnerabilities[] | {id:.vulnerabilityID, sev:.severity, fixedIn:.fixedVersion}'
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Grafana Dashboards
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

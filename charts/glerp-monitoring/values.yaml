@@ -482,7 +482,26 @@ trivy-operator:
     storageSize: "4Gi"
     skipJavaDBUpdate: false
     ignoreUnfixed: true
-    severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+    # ── CRITICAL CONSTRAINT: keep VulnerabilityReport CRDs under the K8s 3 MiB limit ──
+    # A VulnerabilityReport is a single Kubernetes object; the API server rejects any
+    # object > 3 MiB (3145728 bytes). A full app image (OS + Python stack, e.g.
+    # glerp-image) scanned across all 5 severities produces a report EXCEEDING 3 MiB, so
+    # the operator's job reconciler fails "Request entity too large" and NO report is
+    # written — silently: the scan completes but nothing is stored, so the workload gets
+    # no metric and no dashboard data. (Confirmed on both dev and prod: only the lighter
+    # workloads' reports stored; the heavy ones were silently missing for months.)
+    #
+    # severity is the ONLY lever on CRD size (there is no summary-only mode for vuln
+    # reports; alternateReportStorage replaces CRDs and would break the CRD-derived
+    # metric). HIGH,CRITICAL keeps reports well under the limit AND matches the security
+    # dashboard's Fixable C+H density (SOC2 CC6.6). Full per-CVE detail for any image is
+    # available on demand: kubectl get vulnerabilityreport <name> -n <ns> -o json | jq
+    #
+    # CONFIGURABLE — a security group may widen this, BUT widening past the safe scope
+    # will re-trigger the 3 MiB failure on the heaviest images (they silently stop
+    # reporting). If broader coverage with full detail is needed, see the Phase 2
+    # FileBrowser offload (webhookBroadcastURL + receiver) noted in the chart docs.
+    severity: "HIGH,CRITICAL"
     slow: true
     priorityClassName: "glerp-scan-low"
     resources:
@@ -514,21 +533,13 @@ trivy-operator:
     scanJobAnnotations: ""
     scanJobNodeSelector: {}
     scanJobTolerations: []
-    scanJobCustomVolumes:
-      - name: ghcr-docker-config
-        secret:
-          secretName: ghcr-cred
-          optional: true
-          items:
-            - key: .dockerconfigjson
-              path: config.json
-    scanJobCustomVolumesMount:
-      - name: ghcr-docker-config
-        mountPath: /etc/trivy-registry
-        readOnly: true
-    scanJobAdditionalEnvVars:
-      - name: DOCKER_CONFIG
-        value: /etc/trivy-registry
+    # NOTE: no scan-job DOCKER_CONFIG volume/env here on purpose. Trivy Operator
+    # authenticates private-registry scans NATIVELY from each workload's
+    # imagePullSecrets (ghcr-cred) — verified working. The former
+    # scanJobCustomVolumes(ghcr-docker-config) + scanJobAdditionalEnvVars(DOCKER_CONFIG)
+    # approach was dead config: scanJobAdditionalEnvVars is not a valid subchart key
+    # (never rendered), so DOCKER_CONFIG was never set and the mounted secret was never
+    # read. Removed to avoid confusion.
 
 # ── Prometheus Pushgateway subchart ──────────────────────────────────────────
 # Receives metrics pushes from kube-bench and ZAP scan jobs.

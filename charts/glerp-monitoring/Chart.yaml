@@ -8,14 +8,16 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.1.20
-appVersion: "2.1.20"
+version: 2.2.0
+appVersion: "2.2.0"
 annotations:
   artifacthub.io/changes: |
     - kind: changed
-      description: "GHCR pull secret conforms to the shared ESO+Vault standard: reads secret/data/github/ghcr-cred via the vault-backend ClusterSecretStore and creates a secret named ghcr-cred (was ghcr-pull-secret from a self-created k8s-to-k8s store). Cross-namespace ClusterExternalSecret fan-out retained so Trivy can scan private images in labeled namespaces"
+      description: "Upgrade trivy-operator subchart 0.32.1 -> 0.35.0 (app 0.30.1 -> 0.33.0) for a more robust vuln-scan reconciler"
+    - kind: fixed
+      description: "Bound Trivy vulnerability scan severity so VulnerabilityReport CRDs stay under the Kubernetes 3 MiB object limit — large glerp-image reports at all-5 severities exceeded it, so the CRD was never written (Request entity too large) and the workload silently got no metric and no dashboard data. Severity is configurable; widening past the safe scope risks re-hitting the limit on the heaviest images"
     - kind: removed
-      description: "Self-created ghcr-cluster-secret-store.yaml (k8s-ghcr-source) — now uses the shared cluster-wide vault-backend ClusterSecretStore"
+      description: "Dead scanJobAdditionalEnvVars/DOCKER_CONFIG scan-job config (invalid subchart key, never rendered) and the unused ghcr-docker-config scan-job volume — Trivy authenticates private scans natively via the workload imagePullSecrets (ghcr-cred)"
 keywords:
   - monitoring
   - uptime
@@ -44,7 +46,7 @@ dependencies:
     alias: blackbox-exporter
     condition: blackbox-exporter.enabled
   - name: trivy-operator
-    version: "0.32.1"
+    version: "0.35.0"
     repository: https://aquasecurity.github.io/helm-charts/
     condition: trivy-operator.enabled
   - name: prometheus-pushgateway

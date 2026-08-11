@@ -4,9 +4,9 @@ dependencies:
   version: 9.4.0
 - name: trivy-operator
   repository: https://aquasecurity.github.io/helm-charts/
-  version: 0.32.1
+  version: 0.35.0
 - name: prometheus-pushgateway
   repository: https://prometheus-community.github.io/helm-charts
   version: 2.14.0
-digest: sha256:85e5fe2cae17d105321518ac4955101624bd5415636dde50ffccb965fd488c91
-generated: "2026-05-29T06:46:12.287434836-05:00"
+digest: sha256:6a7581fc7eea92c408efedc4417fc0437242378558958a64b10618d106a3cdfb
+generated: "2026-08-10T19:24:25.461743045-05:00"
