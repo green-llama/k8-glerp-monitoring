@@ -474,12 +474,14 @@ trivy-operator:
     # AND give enough concurrency to drain the cluster-wide queue.
     #   - scanJobTTL 90s: completed Jobs clear quickly (frees slots); still leaves a
     #     short forensic window to inspect a failed scan job. (Was 1h — the starvation.)
-    #   - scanJobsConcurrentLimit 10: with ~5s scans + fast slot turnover, drains 100+
-    #     workloads in a few minutes. Safe here — the historical I/O brownout was from
-    #     the OTHER scanner types (config-audit/compliance), not vuln-scan concurrency;
-    #     ClientServer mode also means scan pods share one trivy-server DB (no per-pod
-    #     250MB download). Raise further only if the cluster grows a lot.
-    scanJobsConcurrentLimit: 10
+    #   - scanJobsConcurrentLimit 4: enough to drain the queue (small public-image scans
+    #     finish in ~5s), but low enough to LIMIT concurrent large-layer image pulls. The
+    #     heavy glerp-image layer pulls over HTTP/2 to GHCR hit
+    #     "stream error: PROTOCOL_ERROR received from peer" under concurrency; capping
+    #     parallel scans spreads those pulls and mitigates it (alongside gunicorn-only +
+    #     7-day TTL cutting glerp scan volume). Was 10 during full-cluster-drain tuning;
+    #     lowered to 4 as belt-and-suspenders against the HTTP/2 layer-pull resets.
+    scanJobsConcurrentLimit: 4
     scanJobTTL: "90s"
     vulnerabilityScannerEnabled: true
     configAuditScannerEnabled: false
@@ -487,9 +489,16 @@ trivy-operator:
     exposedSecretScannerEnabled: false
     complianceScannerEnabled: false
     infraAssessmentScannerEnabled: false
-    # VulnerabilityReport validity: after this TTL the operator re-scans the workload
-    # (keeps CVE data fresh). Reports for images no longer running are not recreated.
-    scannerReportTTL: "24h"
+    # VulnerabilityReport validity: after this TTL the operator re-scans the workload.
+    # 168h (7 days) — the operator has NO image-digest dedup, so the same image version
+    # is re-pulled per workload on every re-scan. A weekly interval keeps steady-state
+    # image-pull bandwidth low across a multi-tenant fleet running a common glerp-image,
+    # while a NEW image version still scans immediately on deploy (workload-change event,
+    # TTL-independent). Re-scans stagger naturally: TTL is per-report (keyed to each
+    # report's own creation time), and scanJobsConcurrentLimit caps parallelism — so no
+    # thundering-herd of pulls on any single day. Trivy's own DB refresh still catches
+    # newly-disclosed CVEs against unchanged images at the weekly re-scan.
+    scannerReportTTL: "168h"
   trivy:
     mode: ClientServer
     storageClassName: ""
@@ -561,6 +570,14 @@ trivy-operator:
     scanJobAnnotations: ""
     scanJobNodeSelector: {}
     scanJobTolerations: []
+    # Scan only ONE workload per glerp tenant. All 7 glerp pods run the IDENTICAL
+    # glerp-image, and the operator has no image-digest dedup — so scanning all 7 pulls
+    # the same multi-GB image 7× per tenant. skipResourceByLabels skips any workload
+    # carrying this label KEY (matches on key presence, not value). The glerp APP chart
+    # labels the 6 non-gunicorn Deployments (nginx, socketio, scheduler, worker-d/l/s)
+    # with `glerp.io/trivy-skip: "true"`, leaving gunicorn as the single scanned
+    # representative. Harmless if the label doesn't exist yet (nothing gets skipped).
+    skipResourceByLabels: "glerp.io/trivy-skip"
     # NOTE: no scan-job DOCKER_CONFIG volume/env here on purpose. Trivy Operator
     # authenticates private-registry scans NATIVELY from each workload's
     # imagePullSecrets (ghcr-cred) — verified working. The former

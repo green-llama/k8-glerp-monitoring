@@ -8,12 +8,18 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.2.2
-appVersion: "2.2.2"
+version: 2.3.0
+appVersion: "2.3.0"
 annotations:
   artifacthub.io/changes: |
+    - kind: added
+      description: "Scan only one workload per glerp tenant: skipResourceByLabels=glerp.io/trivy-skip. All 7 glerp pods run the identical glerp-image and the operator has no image-digest dedup, so scanning all 7 pulls the multi-GB image 7x per tenant. The glerp app chart labels the 6 non-gunicorn Deployments to skip them, leaving gunicorn as the single scanned representative (7x fewer pulls per tenant)"
+    - kind: changed
+      description: "scannerReportTTL 24h -> 168h (weekly). Unchanged images re-pull weekly instead of daily (cuts steady-state bandwidth across a multi-tenant fleet); a new image version still scans immediately on deploy. Re-scans stagger naturally (per-report TTL) + are throttled by concurrency"
+    - kind: changed
+      description: "scanJobsConcurrentLimit 10 -> 4 to limit concurrent large-layer HTTP/2 image pulls, mitigating 'stream error: PROTOCOL_ERROR received from peer' on the heavy glerp-image layers"
     - kind: fixed
-      description: "Heavy app-image scans (glerp-image) no longer time out: skip node_modules (trivy.skipDirs), raise trivy.timeout + scanJobTimeout to 15m, and drop the deprecated trivy.slow flag. The huge frappe/posawesome node_modules tree caused scans to exceed the 5m default and fail silently (context deadline exceeded) with no report written. skipDirs is global (all images, no per-image management)"
+      description: "Heavy app-image scans (glerp-image) no longer time out: skip node_modules (trivy.skipDirs), raise trivy.timeout + scanJobTimeout to 15m, and drop the deprecated trivy.slow flag. The huge frappe/posawesome node_modules tree caused scans to exceed the 5m default and fail silently (context deadline exceeded) with no report written"
     - kind: fixed
       description: "Trivy scan-job throughput: scanJobTTL 1h -> 90s and scanJobsConcurrentLimit 1 -> 10. Completed scan Jobs count against the concurrency limit; at 1h TTL they occupied every slot and starved new scans, so on a full-cluster scan most workloads never got a report and deleting a report didn't regenerate it (looked like the operator was wedged). Root-caused via debug logs"
     - kind: changed
