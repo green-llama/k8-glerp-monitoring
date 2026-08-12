@@ -8,10 +8,12 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.3.0
-appVersion: "2.3.0"
+version: 2.4.0
+appVersion: "2.4.0"
 annotations:
   artifacthub.io/changes: |
+    - kind: fixed
+      description: "Heavy app-image scans (glerp-image) now complete: trivy.offlineScan=true + trivy.skipJavaDBUpdate=true. The glerp-image carries a .jar layer (bundled frappe/posawesome tooling); Trivy's Java-DB init failed deterministically in-cluster ('Unable to initialize the Java DB ... chmod /tmp/trivy/.cache/java-db/...: no such file or directory'), so every scan of that layer died AFTER pulling it (the layer downloads to 100% fine). This — not the intermittent HTTP/2 PROTOCOL_ERROR seen earlier — was the real recurring blocker. Verified on dev: gunicorn scan now writes a report (3/3 attempts). Skipping the Java DB is safe for a Python/frappe app (jars are bundled tooling, low runtime surface, same rationale as skipping node_modules); OS + Python packages still scan"
     - kind: added
       description: "Scan only one workload per glerp tenant: skipResourceByLabels=glerp.io/trivy-skip. All 7 glerp pods run the identical glerp-image and the operator has no image-digest dedup, so scanning all 7 pulls the multi-GB image 7x per tenant. The glerp app chart labels the 6 non-gunicorn Deployments to skip them, leaving gunicorn as the single scanned representative (7x fewer pulls per tenant)"
     - kind: changed

@@ -475,12 +475,12 @@ trivy-operator:
     #   - scanJobTTL 90s: completed Jobs clear quickly (frees slots); still leaves a
     #     short forensic window to inspect a failed scan job. (Was 1h — the starvation.)
     #   - scanJobsConcurrentLimit 4: enough to drain the queue (small public-image scans
-    #     finish in ~5s), but low enough to LIMIT concurrent large-layer image pulls. The
-    #     heavy glerp-image layer pulls over HTTP/2 to GHCR hit
-    #     "stream error: PROTOCOL_ERROR received from peer" under concurrency; capping
-    #     parallel scans spreads those pulls and mitigates it (alongside gunicorn-only +
-    #     7-day TTL cutting glerp scan volume). Was 10 during full-cluster-drain tuning;
-    #     lowered to 4 as belt-and-suspenders against the HTTP/2 layer-pull resets.
+    #     finish in ~5s), but low enough to LIMIT concurrent large-layer image pulls,
+    #     keeping steady-state bandwidth in check on a multi-tenant fleet. Was 10 during
+    #     full-cluster-drain tuning; lowered to 4. (An intermittent HTTP/2 PROTOCOL_ERROR
+    #     was seen on the heavy glerp-image layer, but the deterministic scan blocker was
+    #     the Java-DB step — see trivy.offlineScan/skipJavaDBUpdate below; 4 is retained
+    #     as sane bandwidth throttling, not as a PROTOCOL_ERROR fix.)
     scanJobsConcurrentLimit: 4
     scanJobTTL: "90s"
     vulnerabilityScannerEnabled: true
@@ -501,9 +501,26 @@ trivy-operator:
     scannerReportTTL: "168h"
   trivy:
     mode: ClientServer
+    # ── Java DB disabled: offlineScan + skipJavaDBUpdate ─────────────────────────
+    # The glerp-image carries a layer with .jar files (bundled build/runtime tooling
+    # from frappe/posawesome). When Trivy hits that layer it tries to initialize the
+    # Java vulnerability DB, which fails deterministically in-cluster:
+    #   "Unable to initialize the Java DB: ... failed to download javadb.tar.gz:
+    #    chmod /tmp/trivy/.cache/java-db/trivy-java.db: no such file or directory"
+    # This — NOT the intermittent HTTP/2 PROTOCOL_ERROR — is the real recurring
+    # blocker: the image layer pulls to 100% fine (~905 MiB observed), then the scan
+    # dies at the Java-DB step every time. (The earlier timeout / PROTOCOL_ERROR were
+    # outer symptoms on the same .jar layer; each fix surfaced the next.)
+    #   - offlineScan: don't fetch external DBs (incl. Java DB) at scan time — removes
+    #     the failing javadb.tar.gz download + cache-dir chmod entirely.
+    #   - skipJavaDBUpdate: belt-and-suspenders; never refresh the Java index DB.
+    # Security tradeoff is negligible: glerp is a Python/frappe app; the .jar files
+    # are bundled tooling (low runtime attack surface), same rationale as skipping
+    # node_modules. OS + Python packages (the real patchable surface) still scan.
+    offlineScan: true
     storageClassName: ""
     storageSize: "4Gi"
-    skipJavaDBUpdate: false
+    skipJavaDBUpdate: true
     ignoreUnfixed: true
     # ── CRITICAL CONSTRAINT: keep VulnerabilityReport CRDs under the K8s 3 MiB limit ──
     # A VulnerabilityReport is a single Kubernetes object; the API server rejects any
