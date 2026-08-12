@@ -8,10 +8,12 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.4.0
-appVersion: "2.4.0"
+version: 2.4.1
+appVersion: "2.4.1"
 annotations:
   artifacthub.io/changes: |
+    - kind: changed
+      description: "Dashboard scope note: the Fixable C+H panels now state that Java/jar CVEs are excluded by design (offlineScan) and severity is limited to HIGH,CRITICAL — so a low count reads as 'no in-scope vulns', not 'clean'. Prevents misreading e.g. glerp-image's 2 criticals as complete coverage (embedded jars are out of scope, like node_modules). Also corrected a stale 're-scans every 6 hours' description to the actual 7-day interval. Dashboard-only; no scan-behavior change"
     - kind: fixed
       description: "Heavy app-image scans (glerp-image) now complete: trivy.offlineScan=true + trivy.skipJavaDBUpdate=true. The glerp-image carries a .jar layer (bundled frappe/posawesome tooling); Trivy's Java-DB init failed deterministically in-cluster ('Unable to initialize the Java DB ... chmod /tmp/trivy/.cache/java-db/...: no such file or directory'), so every scan of that layer died AFTER pulling it (the layer downloads to 100% fine). This — not the intermittent HTTP/2 PROTOCOL_ERROR seen earlier — was the real recurring blocker. Verified on dev: gunicorn scan now writes a report (3/3 attempts). Skipping the Java DB is safe for a Python/frappe app (jars are bundled tooling, low runtime surface, same rationale as skipping node_modules); OS + Python packages still scan"
     - kind: added

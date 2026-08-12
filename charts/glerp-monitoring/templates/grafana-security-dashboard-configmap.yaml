@@ -47,7 +47,7 @@ data:
 
         {
           "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "description": "Fixable Critical + High CVEs per image tracked by Trivy — fleet-size-normalized so adding namespaces does not inflate the score. 'Fixable' means a patched version of a dependency exists, but does NOT always mean you can patch today — upstream images (MetalLB, Longhorn, etc.) must first incorporate the dependency fix and ship a new release. A falling density trend over time is the meaningful SOC2 evidence. Enterprise reality: 10–25 is typical for actively-maintained infrastructure images on a quarterly patch cycle; < 10 reflects aggressive patching or distroless base images. Target < 15 (green). SOC2 CC6.6.",
+          "description": "Fixable Critical + High CVEs per image tracked by Trivy — fleet-size-normalized so adding namespaces does not inflate the score. 'Fixable' means a patched version of a dependency exists, but does NOT always mean you can patch today — upstream images (MetalLB, Longhorn, etc.) must first incorporate the dependency fix and ship a new release. A falling density trend over time is the meaningful SOC2 evidence. Enterprise reality: 10–25 is typical for actively-maintained infrastructure images on a quarterly patch cycle; < 10 reflects aggressive patching or distroless base images. Target < 15 (green). SOC2 CC6.6. SCOPE: severity is limited to HIGH,CRITICAL (keeps VulnerabilityReport CRDs under the K8s 3 MiB object limit), and Java/jar CVEs are EXCLUDED by design (trivy.offlineScan + skipJavaDBUpdate) — jars in app images (e.g. glerp-image) are bundled tooling, treated like node_modules. Counts therefore reflect the OS + language-package surface, not embedded jars; a low count is not 'no vulns', it is 'no in-scope vulns'.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -140,7 +140,7 @@ data:
 
         {
           "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "description": "Fixable CVE counts by severity — only CVEs with a patched image version available are shown (ignoreUnfixed: true). Trivy Operator re-scans every 6 hours across all namespaces. Every finding here is directly actionable: update the image to the version shown in the VulnerabilityReport. SOC2 CC7.1 — detection and response to security events.",
+          "description": "Fixable CVE counts by severity — only CVEs with a patched image version available are shown (ignoreUnfixed: true). Trivy Operator re-scans unchanged images every 7 days (new image versions scan immediately on deploy). Java/jar CVEs are excluded by design (offlineScan) — counts reflect OS + language packages, not embedded jars. Every finding here is directly actionable: update the image to the version shown in the VulnerabilityReport. SOC2 CC7.1 — detection and response to security events.",
           "fieldConfig": {
             "defaults": { "color": { "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
             "overrides": [
