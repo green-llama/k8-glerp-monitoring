@@ -145,29 +145,23 @@ data:
             "defaults": { "color": { "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
             "overrides": [
               { "matcher": { "id": "byName", "options": "Critical" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-red",  "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "High" },     "properties": [{ "id": "color", "value": { "fixedColor": "orange",    "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "Medium" },   "properties": [{ "id": "color", "value": { "fixedColor": "yellow",    "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "Low" },      "properties": [{ "id": "color", "value": { "fixedColor": "green",     "mode": "fixed" } }] },
-              { "matcher": { "id": "byName", "options": "Unknown" },  "properties": [{ "id": "color", "value": { "fixedColor": "blue",      "mode": "fixed" } }] }
+              { "matcher": { "id": "byName", "options": "High" },     "properties": [{ "id": "color", "value": { "fixedColor": "orange",    "mode": "fixed" } }] }
             ]
           },
           "gridPos": { "h": 8, "w": 6, "x": 0, "y": 9 },
           "id": 6,
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "title": "CVEs by Severity — All Namespaces",
+          "title": "Fixable CVEs (Critical + High) — All Namespaces",
           "type": "stat",
           "targets": [
             { "expr": "sum(trivy_image_vulnerabilities{severity=\"Critical\"}) or vector(0)", "legendFormat": "Critical", "refId": "A" },
-            { "expr": "sum(trivy_image_vulnerabilities{severity=\"High\"})     or vector(0)", "legendFormat": "High",     "refId": "B" },
-            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Medium\"})   or vector(0)", "legendFormat": "Medium",   "refId": "C" },
-            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Low\"})      or vector(0)", "legendFormat": "Low",      "refId": "D" },
-            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Unknown\"})  or vector(0)", "legendFormat": "Unknown",  "refId": "E" }
+            { "expr": "sum(trivy_image_vulnerabilities{severity=\"High\"})     or vector(0)", "legendFormat": "High",     "refId": "B" }
           ]
         },
 
         {
           "datasource": { "type": "prometheus", "uid": "${vm_datasource}" },
-          "description": "Raw fixable CVE counts (left axis) plus fleet-normalized C+H density (right axis, dashed purple). The density line accounts for fleet growth — if you add namespaces over time the raw counts naturally rise, but a falling or flat density line means patching is keeping pace. Use the density trend as your SOC2 evidence of continuous improvement. Data points appear as Trivy completes its 6-hour scan cycles.",
+          "description": "Raw fixable CVE counts (left axis) plus fleet-normalized C+H density (right axis, dashed purple). The density line accounts for fleet growth — if you add namespaces over time the raw counts naturally rise, but a falling or flat density line means patching is keeping pace. Use the density trend as your SOC2 evidence of continuous improvement. Data points appear as Trivy completes its scan cycles (unchanged images re-scan every 7 days; new versions scan on deploy). Severity scope: HIGH,CRITICAL only — Medium/Low/Unknown are not scanned, so they are intentionally not shown here.",
           "fieldConfig": {
             "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 8 } },
             "overrides": [
@@ -176,9 +170,6 @@ data:
               ]},
               { "matcher": { "id": "byName", "options": "High" }, "properties": [
                 { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
-              ]},
-              { "matcher": { "id": "byName", "options": "Medium" }, "properties": [
-                { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }
               ]},
               { "matcher": { "id": "byName", "options": "C+H Density" }, "properties": [
                 { "id": "color",                "value": { "fixedColor": "purple", "mode": "fixed" } },
@@ -200,7 +191,6 @@ data:
           "targets": [
             { "expr": "sum(trivy_image_vulnerabilities{severity=\"Critical\"}) or vector(0)", "legendFormat": "Critical", "refId": "A" },
             { "expr": "sum(trivy_image_vulnerabilities{severity=\"High\"})     or vector(0)", "legendFormat": "High",     "refId": "B" },
-            { "expr": "sum(trivy_image_vulnerabilities{severity=\"Medium\"})   or vector(0)", "legendFormat": "Medium",   "refId": "C" },
             {
               "expr": "glerp:cve_density",
               "legendFormat": "C+H Density",

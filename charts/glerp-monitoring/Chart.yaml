@@ -8,10 +8,12 @@ description: >
   VictoriaMetrics (90-day retention), unified AlertManager routing, and nine Grafana
   dashboards. New sites auto-discovered by labeling their Kubernetes Service.
 type: application
-version: 2.4.1
-appVersion: "2.4.1"
+version: 2.4.2
+appVersion: "2.4.2"
 annotations:
   artifacthub.io/changes: |
+    - kind: changed
+      description: "Dashboard: removed Medium/Low/Unknown from the Trivy CVE severity + trend panels. Trivy only scans HIGH,CRITICAL (3 MiB CRD limit), so those tiers were never freshly populated — the dashboard was showing STALE historical Medium/Low values from VictoriaMetrics' 90-day window that would drift toward 0 as they aged out, creating a misleading 'Medium CVEs improving' trend that was really just data expiring. Panels now show only what is actually scanned (Critical/High). ZAP web-scan Medium/Low panels are unaffected (ZAP genuinely scans those). Cosmetic-only; no scan or metric change"
     - kind: changed
       description: "Dashboard scope note: the Fixable C+H panels now state that Java/jar CVEs are excluded by design (offlineScan) and severity is limited to HIGH,CRITICAL — so a low count reads as 'no in-scope vulns', not 'clean'. Prevents misreading e.g. glerp-image's 2 criticals as complete coverage (embedded jars are out of scope, like node_modules). Also corrected a stale 're-scans every 6 hours' description to the actual 7-day interval. Dashboard-only; no scan-behavior change"
     - kind: fixed
