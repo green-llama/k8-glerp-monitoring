@@ -12,6 +12,7 @@ Designed for RKE2 clusters running Rancher Monitoring (kube-prometheus-stack).
 - **Grafana dashboards** — real-time status grid, 30-day SLA compliance table (CSV export), internet connectivity history, and a customer-facing SLA report.
 - **Email alerts** — after 2 minutes down (critical) or 5 minutes degraded (warning); clears automatically when the site recovers. Only GLerp-specific alerts are routed to your email; Kubernetes/Rancher platform alerts are suppressed.
 - **Maintenance windows** — optional browser-based admin tool to schedule windows, exclude them from SLA calculations, mark them on dashboards, and suppress alerts.
+- **Security scanning** — Trivy Operator continuously scans running container images for fixable Critical/High CVEs (SOC2 CC6.6); kube-bench (CIS) and OWASP ZAP run weekly. See [Security Scanning (Trivy)](#security-scanning-trivy) for the scan scope and how to change it.
 
 ---
 
@@ -156,6 +157,65 @@ After the Helm upgrade, Prometheus discovers the new site within ~60 seconds. It
 
 **Multiple sites** — repeat the `extraObjects` block in each site's own chart. Each site manages
 its own probe Service; there is no central list to maintain.
+
+---
+
+## Security Scanning (Trivy)
+
+Trivy Operator (bundled subchart) scans running container images cluster-wide and writes a
+`VulnerabilityReport` per workload; the security dashboard reads a Prometheus metric derived from those
+reports. The scan scope is deliberately narrowed for reliability and signal — this section documents
+**what is scanned today** and **how to widen it** if asked, with the risks.
+
+### What is scanned (current default)
+
+| Dimension | Setting | Meaning |
+|---|---|---|
+| Severity | `HIGH,CRITICAL` | Only high-value findings; keeps report CRDs under the K8s 3 MiB object limit |
+| Fixable only | `ignoreUnfixed: true` | Only CVEs with a patched version available (actionable) |
+| Package scope | OS + language (Python) packages | `node_modules` skipped; **jar/Java archives excluded** (see below) |
+| Per-tenant | one workload per glerp tenant | The 6 non-gunicorn glerp pods carry `glerp.io/trivy-skip`; only gunicorn is scanned (they share one image) |
+| Cadence | re-scan every **7 days** | New image versions scan immediately on deploy |
+
+**In scope:** OS + Python CVEs, Critical/High, fixable, on the images actually running.
+**Excluded by design:** MEDIUM/LOW/UNKNOWN severities, jar/Java CVEs, `node_modules`.
+
+> A low count means "no **in-scope** vulnerabilities", **not** "clean". The dashboard panels carry a
+> scope note stating this — important for auditors (disclosed scope, not a silent blind spot).
+
+### Why the exclusions
+
+- **Severity `HIGH,CRITICAL`** — a VulnerabilityReport is one Kubernetes object, and the API server
+  rejects any object over **3 MiB**. Scanning all five severities pushes the heaviest images
+  (`glerp-image`, `minio`) past that limit; the report is then silently never written and the workload
+  disappears from the dashboard. HIGH,CRITICAL keeps reports safely under the limit.
+- **Jar/Java excluded** (`offlineScan: true` + `skipJavaDBUpdate: true`) — glerp is a Python/frappe app;
+  its `.jar` files are bundled framework tooling (not independently patchable, same rationale as
+  `node_modules`). Enabling Java scanning also broke scans in this cluster (Java-DB cache-dir failure),
+  so it is disabled. OS + Python coverage is fully intact.
+
+### Changing the scope later (and the risks)
+
+**To add MEDIUM / LOW severities:**
+1. Set `trivy-operator.trivy.severity` (e.g. `"MEDIUM,HIGH,CRITICAL"`) in `values.yaml`.
+2. Re-add the Medium/Low/Unknown series to the two Trivy dashboard panels (see git history
+   2.4.1→2.4.2 for the exact JSON that was removed).
+3. **⚠️ Risk:** widening severity can push the heaviest reports past the **3 MiB limit**, at which point
+   those images **silently stop reporting entirely** (worse than the current state). Severity is global —
+   you cannot widen only the light images. **Safer alternative:** keep CRDs at HIGH,CRITICAL and add
+   `operator.webhookBroadcastURL` → a receiver that writes full all-severity reports to the report
+   server PVC, so dashboards keep working and auditors still get full detail.
+
+**To add jar/Java coverage:**
+1. Set `trivy-operator.trivy.skipJavaDBUpdate: false` and `trivy.offlineScan: false`.
+2. **⚠️ Risk:** this alone **re-breaks scanning** (the Java-DB cache-dir failure — no report is written).
+   You must also add a writable cache volume for scan pods (`trivyOperator.scanJobCustomVolumes` +
+   `scanJobCustomVolumesMount` at `/tmp/trivy/.cache`). Verify on dev that reports still write and that
+   jar CVEs actually appear before shipping. Note glerp's jars are bundled tooling you likely can't
+   patch directly — worth it only if an auditor specifically requires jar scanning.
+
+Private GHCR images are scanned via each namespace's native `ghcr-cred` pull secret (label the namespace
+`glerp.io/private-registry=true` so ESO distributes it) — no Trivy-specific registry config needed.
 
 ---
 
